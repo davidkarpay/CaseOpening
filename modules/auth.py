@@ -72,24 +72,32 @@ class AuthManager:
         return any(email_lower.endswith(domain) for domain in self.allowed_domains)
     
     def _send_email(self, to_email: str, subject: str, message: str) -> bool:
-        """Send email using SMTP (requires environment variables)"""
+        """Send email using organization's Outlook/Office365 SMTP server"""
         try:
-            smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+            # Use Office365 SMTP server for pd15.org/pd15.state.fl.us domain
+            smtp_server = os.environ.get('SMTP_SERVER', 'smtp-mail.outlook.com')
             smtp_port = int(os.environ.get('SMTP_PORT', '587'))
-            smtp_username = os.environ.get('SMTP_USERNAME')
+            
+            # Organization email credentials (should be set by admin)
+            smtp_username = os.environ.get('SMTP_USERNAME')  # e.g., 'casemanager@pd15.org'
             smtp_password = os.environ.get('SMTP_PASSWORD')
             
             if not all([smtp_username, smtp_password]):
-                st.error("Email configuration not found. Please contact administrator.")
+                st.error("Email service not configured. Please contact your system administrator.")
                 return False
             
+            # Create email message
             msg = MIMEMultipart()
-            msg['From'] = smtp_username
+            msg['From'] = f"Case Opening Sheet Manager <{smtp_username}>"
             msg['To'] = to_email
             msg['Subject'] = subject
             
-            msg.attach(MIMEText(message, 'plain'))
+            # Add organization signature
+            full_message = f"{message}\n\n---\n15th Judicial Circuit Public Defender's Office\nCase Opening Sheet Manager\nThis is an automated message."
             
+            msg.attach(MIMEText(full_message, 'plain'))
+            
+            # Connect and send email
             server = smtplib.SMTP(smtp_server, smtp_port)
             server.starttls()
             server.login(smtp_username, smtp_password)
@@ -98,7 +106,7 @@ class AuthManager:
             
             return True
         except Exception as e:
-            st.error(f"Failed to send email: {str(e)}")
+            st.error(f"Failed to send verification email. Please contact your system administrator. Error: {str(e)}")
             return False
     
     def _generate_jwt(self, user_id: str) -> str:
