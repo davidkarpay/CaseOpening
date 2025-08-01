@@ -304,39 +304,49 @@ Best regards,
         
         return True, "Account verified successfully! You can now log in."
     
-    def authenticate_user(self, username: str, password: str) -> Tuple[bool, str, Optional[str]]:
-        """Authenticate user with username and password"""
+    def authenticate_user(self, email: str, password: str) -> Tuple[bool, str, Optional[str]]:
+        """Authenticate user with email and password"""
         users = self._load_json(self.users_file)
-        user_key = f"user:{username}"
         
-        if user_key not in users:
-            return False, "Invalid username or password.", None
+        # Find user by email
+        user_found = None
+        user_key = None
+        for key, user in users.items():
+            if user.get('email', '').lower() == email.lower():
+                user_found = user
+                user_key = key
+                break
         
-        user = users[user_key]
+        if not user_found:
+            return False, "Invalid email or password.", None
         
         # Verify password
-        if user['password'] != self._hash_password(password, user['salt']):
-            return False, "Invalid username or password.", None
+        if user_found['password'] != self._hash_password(password, user_found['salt']):
+            return False, "Invalid email or password.", None
         
         # Update last login
-        user['lastLogin'] = datetime.now().isoformat()
-        users[user_key] = user
+        user_found['lastLogin'] = datetime.now().isoformat()
+        users[user_key] = user_found
         self._save_json(self.users_file, users)
         
         # Generate JWT token
-        token = self._generate_jwt(user['id'])
+        token = self._generate_jwt(user_found['id'])
         
         return True, "Login successful!", token
     
-    def request_login_pin(self, username: str) -> Tuple[bool, str]:
+    def request_login_pin(self, email: str) -> Tuple[bool, str]:
         """Request login PIN for quick access"""
         users = self._load_json(self.users_file)
-        user_key = f"user:{username}"
         
-        if user_key not in users:
-            return False, "Username not found."
+        # Find user by email
+        user_found = None
+        for user in users.values():
+            if user.get('email', '').lower() == email.lower():
+                user_found = user
+                break
         
-        user = users[user_key]
+        if not user_found:
+            return False, "Email address not found."
         
         # Generate PIN
         pin = self._generate_pin()
@@ -344,10 +354,10 @@ Best regards,
         
         # Save PIN
         pins = self._load_json(self.pins_file)
-        pins[f"pin:{username}"] = {
+        pins[f"pin:{email.lower()}"] = {
             'pin': pin,
             'expiry': pin_expiry,
-            'userId': user['id']
+            'userId': user_found['id']
         }
         self._save_json(self.pins_file, pins)
         
@@ -357,25 +367,22 @@ Best regards,
 
 This PIN expires in 5 minutes.
 
-If you did not request this PIN, please ignore this email.
-
-Best regards,
-15th Judicial Circuit Public Defender's Office"""
+If you did not request this PIN, please ignore this email."""
         
-        if self._send_email(user['email'], subject, message):
+        if self._send_email(user_found['email'], subject, message):
             return True, "PIN sent to your email address."
         else:
             return False, "Failed to send PIN. Please try again."
     
-    def verify_login_pin(self, username: str, pin: str) -> Tuple[bool, str, Optional[str]]:
+    def verify_login_pin(self, email: str, pin: str) -> Tuple[bool, str, Optional[str]]:
         """Verify login PIN and return JWT token"""
         self._cleanup_expired_data()
         
         pins = self._load_json(self.pins_file)
-        pin_key = f"pin:{username}"
+        pin_key = f"pin:{email.lower()}"
         
         if pin_key not in pins:
-            return False, "No PIN request found for this username.", None
+            return False, "No PIN request found for this email address.", None
         
         pin_data = pins[pin_key]
         

@@ -18,7 +18,7 @@ def show_login_page():
     """, unsafe_allow_html=True)
     
     # Create tabs for different auth methods
-    tab1, tab2, tab3, tab4 = st.tabs(["Login", "Quick PIN Login", "Register", "Verify Account"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Email + Password", "Quick PIN Login", "Create Account", "Verify Account"])
     
     with tab1:
         show_login_form(auth)
@@ -34,23 +34,21 @@ def show_login_page():
 
 
 def show_login_form(auth: AuthManager):
-    """Display standard login form"""
-    st.header("🔑 Standard Login")
+    """Display email + password login form"""
+    st.header("🔑 Email + Password Login")
     
     with st.form("login_form"):
-        username = st.text_input("Username", key="login_username")
+        email = st.text_input("Email Address", placeholder="your.name@pd15.org", key="login_email")
         password = st.text_input("Password", type="password", key="login_password")
         
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            submit = st.form_submit_button("Login", use_container_width=True)
+        submit = st.form_submit_button("Login", use_container_width=True, type="primary")
         
         if submit:
-            if not username or not password:
-                st.error("Please enter both username and password.")
+            if not email or not password:
+                st.error("Please enter both email and password.")
                 return
             
-            success, message, token = auth.authenticate_user(username, password)
+            success, message, token = auth.authenticate_user(email, password)
             
             if success:
                 st.session_state.auth_token = token
@@ -64,7 +62,7 @@ def show_login_form(auth: AuthManager):
 def show_pin_login_form(auth: AuthManager):
     """Display PIN-based login form"""
     st.header("📱 Quick PIN Login")
-    st.info("Get a PIN sent to your email for quick access")
+    st.info("Enter your email address to receive a 6-digit PIN")
     
     # PIN request form
     if 'pin_requested' not in st.session_state:
@@ -72,20 +70,20 @@ def show_pin_login_form(auth: AuthManager):
     
     if not st.session_state.pin_requested:
         with st.form("pin_request_form"):
-            username = st.text_input("Username", key="pin_username")
+            email = st.text_input("Email Address", placeholder="your.name@pd15.org", key="pin_email")
             
-            submit = st.form_submit_button("Send PIN to Email", use_container_width=True)
+            submit = st.form_submit_button("Send PIN to Email", use_container_width=True, type="primary")
             
             if submit:
-                if not username:
-                    st.error("Please enter your username.")
+                if not email:
+                    st.error("Please enter your email address.")
                     return
                 
-                success, message = auth.request_login_pin(username)
+                success, message = auth.request_login_pin(email)
                 
                 if success:
                     st.session_state.pin_requested = True
-                    st.session_state.pin_username = username
+                    st.session_state.pin_email = email
                     st.success(message)
                     st.rerun()
                 else:
@@ -95,11 +93,11 @@ def show_pin_login_form(auth: AuthManager):
         st.success(f"PIN sent to your email address!")
         
         with st.form("pin_verify_form"):
-            pin = st.text_input("Enter PIN from email", key="verify_pin")
+            pin = st.text_input("Enter 6-digit PIN from email", key="verify_pin", max_chars=6)
             
             col1, col2 = st.columns(2)
             with col1:
-                submit = st.form_submit_button("Verify PIN", use_container_width=True)
+                submit = st.form_submit_button("Verify PIN", use_container_width=True, type="primary")
             with col2:
                 if st.form_submit_button("Request New PIN", use_container_width=True):
                     st.session_state.pin_requested = False
@@ -111,7 +109,7 @@ def show_pin_login_form(auth: AuthManager):
                     return
                 
                 success, message, token = auth.verify_login_pin(
-                    st.session_state.pin_username, pin
+                    st.session_state.pin_email, pin
                 )
                 
                 if success:
@@ -127,7 +125,7 @@ def show_pin_login_form(auth: AuthManager):
 def show_registration_form(auth: AuthManager):
     """Display registration form"""
     st.header("📝 Create Account")
-    st.info("Registration is restricted to @pd15.org and @pd15.state.fl.us email addresses")
+    st.warning("⚠️ Only @pd15.org and @pd15.state.fl.us email addresses are allowed")
     
     with st.form("registration_form"):
         username = st.text_input(
@@ -138,14 +136,15 @@ def show_registration_form(auth: AuthManager):
         
         email = st.text_input(
             "Email Address", 
-            help="Must be @pd15.org or @pd15.state.fl.us",
+            placeholder="your.name@pd15.org",
+            help="Must end with @pd15.org or @pd15.state.fl.us",
             key="reg_email"
         )
         
         password = st.text_input(
             "Password", 
             type="password",
-            help="Choose a strong password",
+            help="Minimum 8 characters",
             key="reg_password"
         )
         
@@ -155,7 +154,7 @@ def show_registration_form(auth: AuthManager):
             key="reg_confirm_password"
         )
         
-        submit = st.form_submit_button("Register Account", use_container_width=True)
+        submit = st.form_submit_button("Create Account", use_container_width=True, type="primary")
         
         if submit:
             # Validation
@@ -176,7 +175,7 @@ def show_registration_form(auth: AuthManager):
             
             if success:
                 st.success(message)
-                st.info("Please check the 'Verify Account' tab to complete your registration.")
+                st.info("📧 Check the **Verify Account** tab to complete your registration.")
             else:
                 st.error(message)
 
@@ -184,13 +183,13 @@ def show_registration_form(auth: AuthManager):
 def show_verification_form(auth: AuthManager):
     """Display account verification form"""
     st.header("✅ Verify Account")
-    st.info("Enter the verification code sent to your email")
+    st.info("Enter the 6-digit verification code sent to your email")
     
     with st.form("verification_form"):
-        username = st.text_input("Username", key="verify_username")
-        verification_code = st.text_input("Verification Code", key="verification_code")
+        username = st.text_input("Username", key="verify_username", help="Enter the username you registered with")
+        verification_code = st.text_input("Verification Code", key="verification_code", max_chars=6, help="6-digit code from email")
         
-        submit = st.form_submit_button("Verify Account", use_container_width=True)
+        submit = st.form_submit_button("Verify Account", use_container_width=True, type="primary")
         
         if submit:
             if not username or not verification_code:
@@ -201,7 +200,7 @@ def show_verification_form(auth: AuthManager):
             
             if success:
                 st.success(message)
-                st.info("You can now log in using the 'Login' tab.")
+                st.info("✅ Account activated! You can now log in using the **Email + Password** tab.")
             else:
                 st.error(message)
 

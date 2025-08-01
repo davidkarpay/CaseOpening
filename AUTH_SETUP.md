@@ -1,33 +1,26 @@
 # Authentication System Setup Guide
 
-This Case Opening Sheet Manager includes enterprise-grade authentication with:
-- Email verification for new accounts
-- Time-limited PIN codes for quick access
-- JWT token-based sessions
-- Domain restriction to @pd15.org and @pd15.state.fl.us emails
+This Case Opening Sheet Manager includes secure authentication for **15th Judicial Circuit Public Defender's Office** staff:
 
-## Email Configuration
+## Authentication Features
+- **Account Creation**: Only @pd15.org and @pd15.state.fl.us email addresses allowed
+- **Email Verification**: Required for all new accounts
+- **Two Login Methods**:
+  1. Email + Password (standard login)
+  2. Quick PIN Login (6-digit code sent to email)
 
-### 1. Organizational Email Setup
+## Administrator Setup
 
-The system uses the **15th Judicial Circuit Public Defender's Office** email infrastructure:
+### 1. Email Configuration Required
 
+The system administrator must configure a dedicated service email account:
+- **Service Account**: `casemanager@pd15.org` (or similar)
 - **SMTP Server**: Office365/Outlook (`smtp-mail.outlook.com`)
-- **Email Domain**: @pd15.org or @pd15.state.fl.us
-- **Purpose**: Sends verification codes and PINs TO users' work emails
+- **Purpose**: Sends verification codes and PINs to staff emails
 
-### 2. Administrator Setup Required
+### 2. Environment Variables
 
-**The system administrator must configure a dedicated service email account** such as:
-- `casemanager@pd15.org`
-- `system@pd15.org`
-- `noreply@pd15.state.fl.us`
-
-This service account will send verification emails TO users who register with their @pd15.org or @pd15.state.fl.us addresses.
-
-### 3. Environment Variables
-
-Create a `.env` file in the project root with:
+Set these environment variables or create a `.env` file:
 
 ```bash
 SMTP_SERVER=smtp-mail.outlook.com
@@ -37,16 +30,12 @@ SMTP_PASSWORD=service-account-password
 JWT_SECRET=your-secure-random-jwt-secret
 ```
 
-**Important**: Add `.env` to your `.gitignore` to keep credentials secure.
+### 3. Service Account Setup
 
-### 4. Office365 Service Account Setup
-
-The IT administrator should:
-
-1. Create a dedicated service account (e.g., `casemanager@pd15.org`)
-2. Assign appropriate mailbox permissions
-3. Enable SMTP authentication for the service account
-4. Provide credentials to application administrator
+The IT administrator must:
+1. Create dedicated service account (e.g., `casemanager@pd15.org`)
+2. Enable SMTP authentication for the account
+3. Provide credentials to application administrator
 
 ## Local Development
 
@@ -75,13 +64,7 @@ streamlit run case-opening-app.py
 
 ## Streamlit Cloud Deployment
 
-### 1. Add Secrets to Streamlit Cloud
-
-In your Streamlit Cloud dashboard:
-
-1. Go to your app settings
-2. Click "Secrets"
-3. Add:
+Add these secrets in your Streamlit Cloud dashboard:
 
 ```toml
 [default]
@@ -92,45 +75,29 @@ SMTP_PASSWORD = "service-account-password"
 JWT_SECRET = "your-secure-random-jwt-secret"
 ```
 
-### 2. Update Authentication Module
+## How It Works
 
-For Streamlit Cloud, modify `modules/auth.py` to use Streamlit secrets:
+### 1. Account Creation
+1. User enters username, **@pd15.org or @pd15.state.fl.us email**, and password
+2. System validates email domain (rejects non-PD emails)
+3. Verification email sent to user's work email
+4. User enters 6-digit code to activate account (10-minute expiry)
 
-```python
-# Replace environment variable calls with:
-smtp_username = st.secrets.get("SMTP_USERNAME")
-smtp_password = st.secrets.get("SMTP_PASSWORD")
-jwt_secret = st.secrets.get("JWT_SECRET", "fallback-secret")
+### 2. Login Options
+**Option A - Email + Password:**
+1. User enters email and password
+2. Immediate access granted
+
+**Option B - Quick PIN Login:**
+1. User enters email address
+2. 6-digit PIN sent to their work email (5-minute expiry)
+3. User enters PIN for instant access
+
+### 3. Email Flow
 ```
-
-## Authentication Flow
-
-### 1. New User Registration
-1. User enters username, email (@pd15.org or @pd15.state.fl.us), and password
-2. System validates email domain (only organization emails allowed)
-3. **Verification email sent FROM** `casemanager@pd15.org` **TO** user's work email
-4. User receives 6-digit verification code (10-minute expiry)
-5. User enters code to activate account
-
-### 2. Standard Login
-1. User enters username/password
-2. System generates JWT token (24-hour expiry)
-3. User gains access to application
-
-### 3. Quick PIN Login
-1. User enters username
-2. **PIN email sent FROM** `casemanager@pd15.org` **TO** user's registered work email
-3. User receives 6-digit PIN (5-minute expiry)
-4. User enters PIN for instant access
-
-### 4. Email Flow Diagram
-```
-Registration/PIN Request Flow:
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────────┐
-│ User registers  │────▶│ System sends     │────▶│ User receives email │
-│ with work email │     │ FROM org account │     │ at work address     │
-│ john@pd15.org   │     │ TO john@pd15.org │     │ with verification   │
-└─────────────────┘     └──────────────────┘     └─────────────────────┘
+System Email Account → User's Work Email
+casemanager@pd15.org → john@pd15.org
+    (Verification codes & PINs)
 ```
 
 ## Security Features
