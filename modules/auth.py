@@ -108,9 +108,6 @@ class AuthManager:
             if not all([smtp_username, smtp_password]):
                 st.error("Email service not configured. Please contact your system administrator.")
                 st.info("💡 **For development**: Add `EMAIL_MOCK_MODE=true` to your .env file to enable mock email mode.")
-                # Debug info
-                st.code(f"Debug: EMAIL_MOCK_MODE = {os.environ.get('EMAIL_MOCK_MODE', 'NOT SET')}")
-                st.code(f"Debug: SMTP_USERNAME = {os.environ.get('SMTP_USERNAME', 'NOT SET')}")
                 return False
             
             # Create email message
