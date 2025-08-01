@@ -46,7 +46,8 @@ def render_defendant_info(case_data: Dict):
         value=dob_value,
         min_value=date(1900, 1, 1),
         max_value=date.today(),
-        key="dob"
+        key="dob",
+        format="MM/DD/YYYY"
     )
     
     # Address
@@ -160,6 +161,11 @@ def render_defendant_info(case_data: Dict):
         key="defendant_comments",
         height=100
     )
+    
+    # Navigation
+    st.markdown("---")
+    if st.button("Next: Case Details →", use_container_width=True, type="primary"):
+        st.session_state.scroll_to = "case"
 
 def render_case_info(case_data: Dict):
     """Render case information form"""
@@ -192,7 +198,8 @@ def render_case_info(case_data: Dict):
         case_data['applied_date'] = st.date_input(
             "Applied Date",
             value=applied_date,
-            key="applied_date"
+            key="applied_date",
+            format="MM/DD/YYYY"
         )
         
         appointed_date = case_data.get('appointed_date')
@@ -205,7 +212,8 @@ def render_case_info(case_data: Dict):
         case_data['appointed_date'] = st.date_input(
             "Appointed Date",
             value=appointed_date,
-            key="appointed_date"
+            key="appointed_date",
+            format="MM/DD/YYYY"
         )
     
     # Case type
@@ -258,6 +266,16 @@ def render_case_info(case_data: Dict):
         value=case_data.get('attorney', ''),
         key="attorney"
     )
+    
+    # Navigation
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← Previous: Defendant Info", use_container_width=True):
+            st.session_state.scroll_to = "defendant"
+    with col2:
+        if st.button("Next: Court Info →", use_container_width=True, type="primary"):
+            st.session_state.scroll_to = "court"
 
 def render_court_info(case_data: Dict):
     """Render court information form"""
@@ -284,7 +302,8 @@ def render_court_info(case_data: Dict):
         case_data['court_date'] = st.date_input(
             "Next Court Date",
             value=court_date,
-            key="court_date"
+            key="court_date",
+            format="MM/DD/YYYY"
         )
     
     with col2:
@@ -373,3 +392,13 @@ def render_court_info(case_data: Dict):
         key="disposition_sentence",
         height=150
     )
+    
+    # Navigation
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← Previous: Case Details", use_container_width=True):
+            st.session_state.scroll_to = "case"
+    with col2:
+        if st.button("Next: Export/View →", use_container_width=True, type="primary"):
+            st.session_state.scroll_to = "export"

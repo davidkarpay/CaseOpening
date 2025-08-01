@@ -104,67 +104,92 @@ with st.sidebar:
 if st.session_state.edit_mode:
     st.info(f"📝 Editing case: {st.session_state.current_case.get('case_number', 'New Case')}")
 
-# Form tabs
-tab1, tab2, tab3, tab4 = st.tabs(["👤 Defendant Info", "📋 Case Details", "🏛️ Court Info", "📄 Export/View"])
+# Navigation shortcuts at the top
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    if st.button("👤 Defendant Info", use_container_width=True):
+        st.session_state.scroll_to = "defendant"
+with col2:
+    if st.button("📋 Case Details", use_container_width=True):
+        st.session_state.scroll_to = "case"
+with col3:
+    if st.button("🏛️ Court Info", use_container_width=True):
+        st.session_state.scroll_to = "court"
+with col4:
+    if st.button("📄 Export/View", use_container_width=True):
+        st.session_state.scroll_to = "export"
 
-with tab1:
-    render_defendant_info(st.session_state.current_case)
+st.divider()
 
-with tab2:
-    render_case_info(st.session_state.current_case)
+# All forms on one page
+# Defendant Information Section
+st.markdown('<div id="defendant"></div>', unsafe_allow_html=True)
+render_defendant_info(st.session_state.current_case)
 
-with tab3:
-    render_court_info(st.session_state.current_case)
+st.divider()
 
-with tab4:
-    st.header("📄 Export and View")
+# Case Details Section
+st.markdown('<div id="case"></div>', unsafe_allow_html=True)
+render_case_info(st.session_state.current_case)
+
+st.divider()
+
+# Court Information Section
+st.markdown('<div id="court"></div>', unsafe_allow_html=True)
+render_court_info(st.session_state.current_case)
+
+st.divider()
+
+# Export/View Section
+st.markdown('<div id="export"></div>', unsafe_allow_html=True)
+st.header("📄 Export and View")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Actions")
     
-    col1, col2 = st.columns(2)
+    # Save button
+    if st.button("💾 Save Case", use_container_width=True, type="primary"):
+        saved_case = save_case()
+        st.success(f"✅ Case saved: {saved_case.get('case_number', 'New Case')}")
+        
+        # Generate PDF automatically
+        pdf_path = generate_case_pdf(saved_case)
+        st.info(f"📄 PDF generated: {pdf_path}")
     
-    with col1:
-        st.subheader("Actions")
-        
-        # Save button
-        if st.button("💾 Save Case", use_container_width=True, type="primary"):
-            saved_case = save_case()
-            st.success(f"✅ Case saved: {saved_case.get('case_number', 'New Case')}")
-            
-            # Generate PDF automatically
-            pdf_path = generate_case_pdf(saved_case)
-            st.info(f"📄 PDF generated: {pdf_path}")
-        
-        # Generate PDF only
-        if st.button("📄 Generate PDF", use_container_width=True):
-            if st.session_state.current_case:
-                pdf_path = generate_case_pdf(st.session_state.current_case)
-                
-                # Offer download
-                with open(pdf_path, 'rb') as f:
-                    st.download_button(
-                        label="⬇️ Download PDF",
-                        data=f,
-                        file_name=Path(pdf_path).name,
-                        mime="application/pdf"
-                    )
-        
-        # Export all data
-        if st.button("📊 Export All Cases (JSON)", use_container_width=True):
-            all_cases = db.get_all_cases()
-            json_data = json.dumps(all_cases, indent=2)
-            
-            st.download_button(
-                label="⬇️ Download All Cases",
-                data=json_data,
-                file_name=f"cases_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json"
-            )
-    
-    with col2:
-        st.subheader("Current Case Data")
+    # Generate PDF only
+    if st.button("📄 Generate PDF", use_container_width=True):
         if st.session_state.current_case:
-            st.json(st.session_state.current_case)
-        else:
-            st.info("No case data to display. Fill out the form to see the data structure.")
+            pdf_path = generate_case_pdf(st.session_state.current_case)
+            
+            # Offer download
+            with open(pdf_path, 'rb') as f:
+                st.download_button(
+                    label="⬇️ Download PDF",
+                    data=f,
+                    file_name=Path(pdf_path).name,
+                    mime="application/pdf"
+                )
+    
+    # Export all data
+    if st.button("📊 Export All Cases (JSON)", use_container_width=True):
+        all_cases = db.get_all_cases()
+        json_data = json.dumps(all_cases, indent=2)
+        
+        st.download_button(
+            label="⬇️ Download All Cases",
+            data=json_data,
+            file_name=f"cases_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
+
+with col2:
+    st.subheader("Current Case Data")
+    if st.session_state.current_case:
+        st.json(st.session_state.current_case)
+    else:
+        st.info("No case data to display. Fill out the form to see the data structure.")
 
 # Footer
 st.divider()
