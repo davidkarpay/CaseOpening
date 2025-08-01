@@ -93,8 +93,18 @@ class AuthManager:
                 print(f"Subject: {subject}")
                 print(f"Message:\n{message}")
                 print(f"==================\n")
-                st.info(f"📧 **Development Mode**: Email would be sent to {to_email}")
-                st.code(f"Subject: {subject}\n\n{message}")
+                
+                # Extract PIN/code from message for display
+                import re
+                code_match = re.search(r'(?:PIN is|code is|Code):\s*(\d{6})', message)
+                if code_match:
+                    code = code_match.group(1)
+                    st.success(f"📧 **Development Mode**: Email sent to {to_email}")
+                    st.info(f"🔑 **Your Code**: {code}")
+                    st.warning("⚠️ **Remember this code** - you'll need it on the next screen!")
+                else:
+                    st.info(f"📧 **Development Mode**: Email sent to {to_email}")
+                    st.code(f"Subject: {subject}\n\n{message}")
                 return True
             
             # Use Office365 SMTP server for pd15.org/pd15.state.fl.us domain

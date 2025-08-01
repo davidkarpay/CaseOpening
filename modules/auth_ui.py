@@ -85,12 +85,25 @@ def show_pin_login_form(auth: AuthManager):
                     st.session_state.pin_requested = True
                     st.session_state.pin_email_stored = email
                     st.success(message)
+                    
+                    # In mock mode, add a brief delay so user can see the PIN
+                    import os
+                    if os.environ.get('EMAIL_MOCK_MODE', '').lower() == 'true':
+                        import time
+                        st.info("⏳ **Page will refresh in 3 seconds** - remember your PIN!")
+                        time.sleep(3)
+                    
                     st.rerun()
                 else:
                     st.error(message)
     else:
         # PIN verification form
         st.success(f"PIN sent to your email address!")
+        
+        # Show helpful info in development mode
+        import os
+        if os.environ.get('EMAIL_MOCK_MODE', '').lower() == 'true':
+            st.info("💡 **Development Mode**: The PIN was displayed above when you requested it")
         
         with st.form("pin_verify_form"):
             pin = st.text_input("Enter 6-digit PIN from email", key="verify_pin", max_chars=6)
