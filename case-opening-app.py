@@ -79,8 +79,8 @@ with st.sidebar:
         key="page_selection"
     )
     
+    # New case button (only show on Case Management page)
     if page == "📝 Case Management":
-        # New case button
         if st.button("➕ New Case", use_container_width=True, type="primary"):
             clear_form()
             st.rerun()
@@ -117,13 +117,14 @@ with st.sidebar:
                         clear_form()
                     st.rerun()
 
-    # Main content area - Case Management
+# Main content area based on selected page
+if page == "📝 Case Management":
     if st.session_state.edit_mode:
         st.info(f"📝 Editing case: {st.session_state.current_case.get('case_number', 'New Case')}")
 
     # Navigation shortcuts at the top
     col1, col2, col3, col4 = st.columns(4)
-with col1:
+    with col1:
     if st.button("👤 Defendant Info", use_container_width=True):
         st.session_state.scroll_to = "defendant"
 with col2:
@@ -231,7 +232,8 @@ with col2:
     else:
         st.info("No case data to display. Fill out the form to see the data structure.")
 
-elif page == "⚙️ Settings":
+# Settings page
+if page == "⚙️ Settings":
     from modules.settings_page import show_settings_page
     show_settings_page()
 
