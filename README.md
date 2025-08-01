@@ -2,7 +2,7 @@
 
 A Streamlit web application designed for public defenders to manage case opening sheets with PDF export functionality.
 
-🚀 **[Live Demo](#)** *(Deploy to Streamlit Cloud - see instructions below)*
+🚀 **[Live Demo](https://caseopeninggit-nmtak66hzexfgyxzcxa38b.streamlit.app/)**
 
 ## Overview
 
