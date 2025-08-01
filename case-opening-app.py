@@ -4,6 +4,7 @@ from datetime import datetime, date
 from pathlib import Path
 import uuid
 from modules.pdf_generator import generate_case_pdf
+from modules.pdf_form_filler import fill_official_form
 from modules.database import CaseDatabase
 from modules.forms import render_defendant_info, render_case_info, render_court_info
 from modules.utils import format_phone, parse_date
@@ -153,24 +154,47 @@ with col1:
     if st.button("💾 Save Case", use_container_width=True, type="primary"):
         saved_case = save_case()
         st.success(f"✅ Case saved: {saved_case.get('case_number', 'New Case')}")
-        
-        # Generate PDF automatically
-        pdf_path = generate_case_pdf(saved_case)
-        st.info(f"📄 PDF generated: {pdf_path}")
     
-    # Generate PDF only
-    if st.button("📄 Generate PDF", use_container_width=True):
+    # PDF Export Options
+    st.markdown("### 📄 PDF Export Options")
+    
+    # Option 1: Custom PDF Report
+    if st.button("📄 Generate Custom PDF Report", use_container_width=True):
         if st.session_state.current_case:
             pdf_path = generate_case_pdf(st.session_state.current_case)
             
             # Offer download
             with open(pdf_path, 'rb') as f:
                 st.download_button(
-                    label="⬇️ Download PDF",
+                    label="⬇️ Download Custom Report",
                     data=f,
                     file_name=Path(pdf_path).name,
-                    mime="application/pdf"
+                    mime="application/pdf",
+                    key="download_custom"
                 )
+    
+    # Option 2: Fill Official Form
+    if st.button("📋 Fill Official Case Opening Form", use_container_width=True):
+        if st.session_state.current_case:
+            try:
+                # Check if template exists
+                template_path = "CASE OPENING SHEET.pdf"
+                if not Path(template_path).exists():
+                    st.error(f"Template file '{template_path}' not found. Please ensure it's in the root directory.")
+                else:
+                    pdf_path = fill_official_form(st.session_state.current_case, template_path)
+                    
+                    # Offer download
+                    with open(pdf_path, 'rb') as f:
+                        st.download_button(
+                            label="⬇️ Download Official Form",
+                            data=f,
+                            file_name=Path(pdf_path).name,
+                            mime="application/pdf",
+                            key="download_official"
+                        )
+            except Exception as e:
+                st.error(f"Error filling form: {str(e)}")
     
     # Export all data
     if st.button("📊 Export All Cases (JSON)", use_container_width=True):
