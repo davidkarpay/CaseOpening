@@ -78,7 +78,7 @@ JWT_SECRET = "your-secure-random-jwt-secret"
 ## How It Works
 
 ### 1. Account Creation
-1. User enters username, **@pd15.org or @pd15.state.fl.us email**, and password
+1. User enters **@pd15.org or @pd15.state.fl.us email** and password
 2. System validates email domain (rejects non-PD emails)
 3. Verification email sent to user's work email
 4. User enters 6-digit code to activate account (10-minute expiry)
@@ -143,7 +143,7 @@ self.allowed_domains = ['@pd15.org', '@pd15.state.fl.us', '@newdomain.com']
 ```
 
 ### Reset User Password
-Delete user from `data/users.json` and have them re-register.
+Delete user from `data/users.json` (find by email address) and have them re-register.
 
 ### View User Activity
 Check `lastLogin` timestamps in `data/users.json`.

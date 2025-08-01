@@ -201,7 +201,7 @@ class AuthManager:
         if expired_keys:
             self._save_json(self.pins_file, pins)
     
-    def register_user(self, username: str, password: str, email: str) -> Tuple[bool, str]:
+    def register_user(self, email: str, password: str, email_confirm: str) -> Tuple[bool, str]:
         """Register a new user with email verification"""
         self._cleanup_expired_data()
         
@@ -209,12 +209,8 @@ class AuthManager:
         if not self._is_allowed_email_domain(email):
             return False, "Registration is restricted to members of the 15th Judicial Circuit's Public Defender Office. Please use your @pd15.org or @pd15.state.fl.us email address."
         
-        # Check if user already exists
-        users = self._load_json(self.users_file)
-        if f"user:{username}" in users:
-            return False, "Username already exists."
-        
         # Check if email already registered
+        users = self._load_json(self.users_file)
         for user_data in users.values():
             if user_data.get('email', '').lower() == email.lower():
                 return False, "Email already registered."
@@ -223,11 +219,11 @@ class AuthManager:
         verification_code = self._generate_pin()
         code_expiry = int(time.time() * 1000) + (10 * 60 * 1000)  # 10 minutes
         
-        # Create pending user
+        # Create pending user - use email as username
         salt = self._generate_salt()
         pending_user = {
             'id': secrets.token_hex(16),
-            'username': username,
+            'username': email,  # Use email as username
             'password': self._hash_password(password, salt),
             'salt': salt,
             'email': email,
@@ -237,9 +233,9 @@ class AuthManager:
             'createdAt': datetime.now().isoformat()
         }
         
-        # Save pending user
+        # Save pending user - use email as key
         pending_users = self._load_json(self.pending_users_file)
-        pending_users[f"pending:{username}"] = pending_user
+        pending_users[f"pending:{email.lower()}"] = pending_user
         self._save_json(self.pending_users_file, pending_users)
         
         # Send verification email
@@ -260,15 +256,15 @@ Best regards,
         else:
             return False, "Failed to send verification email. Please try again."
     
-    def verify_registration(self, username: str, code: str) -> Tuple[bool, str]:
+    def verify_registration(self, email: str, code: str) -> Tuple[bool, str]:
         """Verify user registration with email code"""
         self._cleanup_expired_data()
         
         pending_users = self._load_json(self.pending_users_file)
-        pending_key = f"pending:{username}"
+        pending_key = f"pending:{email.lower()}"
         
         if pending_key not in pending_users:
-            return False, "No pending registration found for this username."
+            return False, "No pending registration found for this email address."
         
         pending_user = pending_users[pending_key]
         
@@ -285,7 +281,7 @@ Best regards,
         # Move user to active users
         user = {
             'id': pending_user['id'],
-            'username': pending_user['username'],
+            'username': pending_user['username'],  # This is the email
             'password': pending_user['password'],
             'salt': pending_user['salt'],
             'email': pending_user['email'],
@@ -295,7 +291,7 @@ Best regards,
         }
         
         users = self._load_json(self.users_file)
-        users[f"user:{username}"] = user
+        users[f"user:{email.lower()}"] = user
         self._save_json(self.users_file, users)
         
         # Remove from pending

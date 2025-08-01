@@ -128,12 +128,6 @@ def show_registration_form(auth: AuthManager):
     st.warning("⚠️ Only @pd15.org and @pd15.state.fl.us email addresses are allowed")
     
     with st.form("registration_form"):
-        username = st.text_input(
-            "Username", 
-            help="Choose a unique username",
-            key="reg_username"
-        )
-        
         email = st.text_input(
             "Email Address", 
             placeholder="your.name@pd15.org",
@@ -158,7 +152,7 @@ def show_registration_form(auth: AuthManager):
         
         if submit:
             # Validation
-            if not all([username, email, password, confirm_password]):
+            if not all([email, password, confirm_password]):
                 st.error("Please fill in all fields.")
                 return
             
@@ -170,8 +164,8 @@ def show_registration_form(auth: AuthManager):
                 st.error("Password must be at least 8 characters long.")
                 return
             
-            # Register user
-            success, message = auth.register_user(username, password, email)
+            # Register user - use email as username
+            success, message = auth.register_user(email, password, email)
             
             if success:
                 st.success(message)
@@ -186,17 +180,17 @@ def show_verification_form(auth: AuthManager):
     st.info("Enter the 6-digit verification code sent to your email")
     
     with st.form("verification_form"):
-        username = st.text_input("Username", key="verify_username", help="Enter the username you registered with")
+        email = st.text_input("Email Address", key="verify_email", help="Enter the email address you registered with")
         verification_code = st.text_input("Verification Code", key="verification_code", max_chars=6, help="6-digit code from email")
         
         submit = st.form_submit_button("Verify Account", use_container_width=True, type="primary")
         
         if submit:
-            if not username or not verification_code:
-                st.error("Please enter both username and verification code.")
+            if not email or not verification_code:
+                st.error("Please enter both email address and verification code.")
                 return
             
-            success, message = auth.verify_registration(username, verification_code)
+            success, message = auth.verify_registration(email, verification_code)
             
             if success:
                 st.success(message)
@@ -246,7 +240,7 @@ def show_user_info():
         with st.sidebar:
             st.divider()
             st.markdown("### 👤 User Info")
-            st.write(f"**Username:** {user_info['username']}")
+            st.write(f"**Name:** {user_info['email'].split('@')[0].replace('.', ' ').title()}")
             st.write(f"**Email:** {user_info['email']}")
             
             if st.button("🚪 Logout", use_container_width=True):
