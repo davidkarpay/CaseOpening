@@ -8,6 +8,7 @@ from modules.pdf_form_filler import fill_official_form
 from modules.database import CaseDatabase
 from modules.forms import render_defendant_info, render_case_info, render_court_info
 from modules.utils import format_phone, parse_date
+from modules.auth_ui import check_authentication, show_user_info
 
 # Page config
 st.set_page_config(
@@ -15,6 +16,10 @@ st.set_page_config(
     page_icon="⚖️",
     layout="wide"
 )
+
+# Check authentication first
+if not check_authentication():
+    st.stop()
 
 # Initialize directories
 Path("data").mkdir(exist_ok=True)
@@ -63,6 +68,9 @@ st.markdown("Manage case opening sheets with PDF export and searchable database"
 # Sidebar for case management
 with st.sidebar:
     st.header("📁 Case Management")
+    
+    # Show user info and logout
+    show_user_info()
     
     # New case button
     if st.button("➕ New Case", use_container_width=True, type="primary"):
