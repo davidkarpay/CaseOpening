@@ -135,8 +135,7 @@ class AuthManager:
                 else:
                     st.error("Email service not configured. Please contact your system administrator.")
                     st.info("💡 **For development**: Add `EMAIL_MOCK_MODE=true` to your .env file to enable mock email mode.")
-                    st.info("🔐 **For production**: Use the secure credential setup below.")
-                    cred_manager.show_credential_setup_ui()
+                    st.info("🔐 **For production**: Go to the **Settings** page to configure secure credentials.")
                 return False
             
             # Create email message

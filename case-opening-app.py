@@ -72,10 +72,18 @@ with st.sidebar:
     # Show user info and logout
     show_user_info()
     
-    # New case button
-    if st.button("➕ New Case", use_container_width=True, type="primary"):
-        clear_form()
-        st.rerun()
+    # Page navigation
+    page = st.selectbox(
+        "📄 Navigate",
+        ["📝 Case Management", "⚙️ Settings"],
+        key="page_selection"
+    )
+    
+    if page == "📝 Case Management":
+        # New case button
+        if st.button("➕ New Case", use_container_width=True, type="primary"):
+            clear_form()
+            st.rerun()
     
     # Search functionality
     st.subheader("🔍 Search Cases")
@@ -109,12 +117,12 @@ with st.sidebar:
                         clear_form()
                     st.rerun()
 
-# Main content area
-if st.session_state.edit_mode:
-    st.info(f"📝 Editing case: {st.session_state.current_case.get('case_number', 'New Case')}")
+    # Main content area - Case Management
+    if st.session_state.edit_mode:
+        st.info(f"📝 Editing case: {st.session_state.current_case.get('case_number', 'New Case')}")
 
-# Navigation shortcuts at the top
-col1, col2, col3, col4 = st.columns(4)
+    # Navigation shortcuts at the top
+    col1, col2, col3, col4 = st.columns(4)
 with col1:
     if st.button("👤 Defendant Info", use_container_width=True):
         st.session_state.scroll_to = "defendant"
@@ -222,6 +230,10 @@ with col2:
         st.json(st.session_state.current_case)
     else:
         st.info("No case data to display. Fill out the form to see the data structure.")
+
+elif page == "⚙️ Settings":
+    from modules.settings_page import show_settings_page
+    show_settings_page()
 
 # Footer
 st.divider()
