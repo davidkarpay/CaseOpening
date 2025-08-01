@@ -83,7 +83,7 @@ def show_pin_login_form(auth: AuthManager):
                 
                 if success:
                     st.session_state.pin_requested = True
-                    st.session_state.pin_email = email
+                    st.session_state.pin_email_stored = email
                     st.success(message)
                     st.rerun()
                 else:
@@ -101,6 +101,8 @@ def show_pin_login_form(auth: AuthManager):
             with col2:
                 if st.form_submit_button("Request New PIN", use_container_width=True):
                     st.session_state.pin_requested = False
+                    if 'pin_email_stored' in st.session_state:
+                        del st.session_state.pin_email_stored
                     st.rerun()
             
             if submit:
@@ -109,13 +111,15 @@ def show_pin_login_form(auth: AuthManager):
                     return
                 
                 success, message, token = auth.verify_login_pin(
-                    st.session_state.pin_email, pin
+                    st.session_state.pin_email_stored, pin
                 )
                 
                 if success:
                     st.session_state.auth_token = token
                     st.session_state.authenticated = True
                     st.session_state.pin_requested = False
+                    if 'pin_email_stored' in st.session_state:
+                        del st.session_state.pin_email_stored
                     st.success(message)
                     st.rerun()
                 else:
@@ -250,8 +254,8 @@ def show_user_info():
                 st.session_state.user_info = None
                 if 'pin_requested' in st.session_state:
                     del st.session_state.pin_requested
-                if 'pin_username' in st.session_state:
-                    del st.session_state.pin_username
+                if 'pin_email_stored' in st.session_state:
+                    del st.session_state.pin_email_stored
                 st.rerun()
 
 
