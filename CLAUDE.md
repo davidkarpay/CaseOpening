@@ -60,8 +60,26 @@ Uses Streamlit session state for:
 - `edit_mode`: Boolean flag for edit vs. new case mode
 - `selected_case_id`: ID of currently selected case
 
-### File Structure Expected
-The code expects a modular structure with a `modules/` directory containing the supporting Python files, though the current implementation has all modules in the root directory with `case-` prefixes.
+### File Structure Issue
+**IMPORTANT**: The code expects a `modules/` directory structure but the current implementation has all module files in the root directory with `case-` prefixes. Before running the application, you need to either:
+
+1. Create the expected structure:
+   ```bash
+   mkdir modules
+   touch modules/__init__.py
+   mv case-database-module.py modules/database.py
+   mv case-forms-module.py modules/forms.py
+   mv case-pdf-generator.py modules/pdf_generator.py
+   mv case-utils-module.py modules/utils.py
+   ```
+
+2. Or update the imports in `case-opening-app.py` to match the current structure:
+   ```python
+   from case_pdf_generator import generate_case_pdf
+   from case_database_module import CaseDatabase
+   from case_forms_module import render_defendant_info, render_case_info, render_court_info
+   from case_utils_module import format_phone, parse_date
+   ```
 
 ## Testing and Validation
 
