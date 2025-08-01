@@ -2,6 +2,8 @@
 
 A Streamlit web application designed for public defenders to manage case opening sheets with PDF export functionality.
 
+🚀 **[Live Demo](#)** *(Deploy to Streamlit Cloud - see instructions below)*
+
 ## Overview
 
 This application provides a comprehensive case management system that allows public defenders to:
@@ -103,6 +105,24 @@ Cases are stored with comprehensive fields including:
 ## License
 
 This project is intended for use by public defenders and legal aid organizations. Please ensure compliance with your jurisdiction's data privacy requirements when handling case information.
+
+## Deployment
+
+### Deploy to Streamlit Community Cloud (Free)
+
+1. Fork this repository to your GitHub account
+2. Sign up for free at [Streamlit Community Cloud](https://streamlit.io/cloud)
+3. Click "New app" and select your forked repository
+4. Set the main file path to `case-opening-app.py`
+5. Click "Deploy"
+
+Your app will be available at `https://[your-username]-caseopening-case-opening-app-[random].streamlit.app/`
+
+### Alternative Deployment Options
+
+- **Heroku**: Add a `Procfile` with `web: sh setup.sh && streamlit run case-opening-app.py`
+- **Railway**: Connect your GitHub repo and it will auto-detect Streamlit
+- **Render**: Use their web service with a Docker container
 
 ## Contributing
 
