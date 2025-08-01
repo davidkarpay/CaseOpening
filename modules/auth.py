@@ -15,6 +15,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, Tuple
 import streamlit as st
+from modules.secure_credentials import SecureCredentialManager
 
 # Load environment variables from .env file if it exists
 try:
@@ -111,13 +112,31 @@ class AuthManager:
             smtp_server = os.environ.get('SMTP_SERVER', 'smtp-mail.outlook.com')
             smtp_port = int(os.environ.get('SMTP_PORT', '587'))
             
-            # Organization email credentials (should be set by admin)
-            smtp_username = os.environ.get('SMTP_USERNAME')  # e.g., 'casemanager@pd15.org'
-            smtp_password = os.environ.get('SMTP_PASSWORD')
+            # Try to get credentials from secure storage first
+            smtp_username = None
+            smtp_password = None
+            
+            # Check if credentials are unlocked in session state
+            if st.session_state.get('smtp_unlocked', False):
+                smtp_username = st.session_state.get('smtp_username')
+                smtp_password = st.session_state.get('smtp_password')
+            
+            # Fallback to environment variables if not using secure storage
+            if not all([smtp_username, smtp_password]):
+                smtp_username = os.environ.get('SMTP_USERNAME')
+                smtp_password = os.environ.get('SMTP_PASSWORD')
             
             if not all([smtp_username, smtp_password]):
-                st.error("Email service not configured. Please contact your system administrator.")
-                st.info("💡 **For development**: Add `EMAIL_MOCK_MODE=true` to your .env file to enable mock email mode.")
+                # Check if secure credentials are set up
+                cred_manager = SecureCredentialManager()
+                if cred_manager.credentials_exist():
+                    st.error("🔒 SMTP credentials are encrypted. Please unlock them in the sidebar.")
+                    cred_manager.show_credential_unlock_ui()
+                else:
+                    st.error("Email service not configured. Please contact your system administrator.")
+                    st.info("💡 **For development**: Add `EMAIL_MOCK_MODE=true` to your .env file to enable mock email mode.")
+                    st.info("🔐 **For production**: Use the secure credential setup below.")
+                    cred_manager.show_credential_setup_ui()
                 return False
             
             # Create email message

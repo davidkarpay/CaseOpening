@@ -269,6 +269,13 @@ def show_user_info():
                     del st.session_state.pin_requested
                 if 'pin_email_stored' in st.session_state:
                     del st.session_state.pin_email_stored
+                # Clear SMTP credentials from memory
+                if 'smtp_unlocked' in st.session_state:
+                    del st.session_state.smtp_unlocked
+                if 'smtp_username' in st.session_state:
+                    del st.session_state.smtp_username
+                if 'smtp_password' in st.session_state:
+                    del st.session_state.smtp_password
                 st.rerun()
 
 
