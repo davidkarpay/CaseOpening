@@ -19,7 +19,10 @@ import streamlit as st
 # Load environment variables from .env file if it exists
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    import pathlib
+    # Load from the project root directory
+    env_path = pathlib.Path(__file__).parent.parent / '.env'
+    load_dotenv(env_path)
 except ImportError:
     # dotenv not installed, environment variables must be set manually
     pass
@@ -105,6 +108,9 @@ class AuthManager:
             if not all([smtp_username, smtp_password]):
                 st.error("Email service not configured. Please contact your system administrator.")
                 st.info("💡 **For development**: Add `EMAIL_MOCK_MODE=true` to your .env file to enable mock email mode.")
+                # Debug info
+                st.code(f"Debug: EMAIL_MOCK_MODE = {os.environ.get('EMAIL_MOCK_MODE', 'NOT SET')}")
+                st.code(f"Debug: SMTP_USERNAME = {os.environ.get('SMTP_USERNAME', 'NOT SET')}")
                 return False
             
             # Create email message
