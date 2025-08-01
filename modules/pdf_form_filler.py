@@ -31,205 +31,220 @@ def fill_official_form(case_data: Dict, template_path: str = "CASE OPENING SHEET
     can = canvas.Canvas(packet, pagesize=letter)
     
     # Set font
-    can.setFont("Helvetica", 10)
+    can.setFont("Helvetica", 9)
     
-    # Header row
-    # Date
+    # Header row - Top of page
+    # Date (after "Date:")
     if case_data.get('court_date'):
         court_date = case_data['court_date']
         if hasattr(court_date, 'strftime'):
             court_date = court_date.strftime('%m/%d/%Y')
-        can.drawString(50, 735, court_date)
+        can.drawString(90, 750, court_date)
     
-    # Page number
+    # Page number (after "Page:")
     if case_data.get('page_number'):
-        can.drawString(362, 735, case_data['page_number'])
+        can.drawString(340, 750, case_data['page_number'])
     
-    # Applied date
+    # Applied date (after "Applied:")
     if case_data.get('applied_date'):
         applied_date = case_data['applied_date']
         if hasattr(applied_date, 'strftime'):
             applied_date = applied_date.strftime('%m/%d/%Y')
-        can.drawString(445, 735, applied_date[:10])  # Limit length
+        can.drawString(420, 750, applied_date[:10])
     
-    # Appointed date
+    # Appointed date (after "Appointed:")
     if case_data.get('appointed_date'):
         appointed_date = case_data['appointed_date']
         if hasattr(appointed_date, 'strftime'):
             appointed_date = appointed_date.strftime('%m/%d/%Y')
-        can.drawString(540, 735, appointed_date[:10])  # Limit length
+        can.drawString(530, 750, appointed_date[:10])
     
-    # ASA line
+    # Second line - ASA/Score/Offer
+    # ASA (after "ASA:")
     if case_data.get('asa'):
-        can.drawString(60, 710, case_data['asa'][:20])  # Limit to prevent overflow
+        can.drawString(90, 730, case_data['asa'][:18])
     
-    # Score
+    # Score (after "Score:")
     if case_data.get('score'):
-        can.drawString(235, 710, case_data['score'][:15])
+        can.drawString(270, 730, case_data['score'][:15])
     
-    # Offer
+    # Offer (after "Offer:")
     if case_data.get('offer'):
-        can.drawString(385, 710, case_data['offer'][:25])
+        can.drawString(420, 730, case_data['offer'][:25])
     
-    # Name fields
+    # Name section - under "Name" header
+    # Last Name
     if case_data.get('last_name'):
-        can.drawString(130, 640, case_data['last_name'][:20])
+        can.drawString(100, 650, case_data['last_name'][:15])
     
+    # First Name
     if case_data.get('first_name'):
-        can.drawString(280, 640, case_data['first_name'][:15])
+        can.drawString(240, 650, case_data['first_name'][:12])
     
+    # Middle Name
     if case_data.get('middle_name'):
-        can.drawString(420, 640, case_data['middle_name'][:15])
+        can.drawString(380, 650, case_data['middle_name'][:10])
     
-    # DOB
+    # DOB (Date of Birth)
     if case_data.get('dob'):
         dob = case_data['dob']
         if hasattr(dob, 'strftime'):
             dob = dob.strftime('%m/%d/%Y')
-        can.drawString(515, 640, dob)
+        can.drawString(480, 650, dob)
     
-    # Address
+    # Address (after "Address:")
     if case_data.get('address'):
-        can.drawString(95, 610, case_data['address'][:60])
+        can.drawString(120, 620, case_data['address'][:45])
     
-    # City, State, Zip
+    # City, State, Zip line
     if case_data.get('city'):
-        can.drawString(60, 580, case_data['city'][:20])
+        can.drawString(60, 590, case_data['city'][:18])
     
     if case_data.get('state'):
-        can.drawString(260, 580, case_data['state'][:2])
+        can.drawString(240, 590, case_data['state'][:2])
     
     if case_data.get('zip_code'):
-        can.drawString(380, 580, case_data['zip_code'][:10])
+        can.drawString(350, 590, case_data['zip_code'][:10])
     
-    # Phone numbers
+    # Phone section
+    # Home Phone
     if case_data.get('phone_home'):
-        can.drawString(110, 550, case_data['phone_home'][:15])
+        can.drawString(80, 560, case_data['phone_home'][:12])
     
+    # Cell Phone  
     if case_data.get('phone_cell'):
-        can.drawString(280, 550, case_data['phone_cell'][:15])
+        can.drawString(220, 560, case_data['phone_cell'][:12])
     
+    # Other Phone
     if case_data.get('phone_other'):
-        can.drawString(450, 550, case_data['phone_other'][:15])
+        can.drawString(380, 560, case_data['phone_other'][:12])
     
-    # Court information box
-    # Court Date
+    # Court information box (Next Court Action & Intake Info)
+    # Court Date (after "Court Date:")
     if case_data.get('court_date'):
         court_date = case_data['court_date']
         if hasattr(court_date, 'strftime'):
             court_date = court_date.strftime('%m/%d/%Y')
-        can.drawString(155, 485, court_date)
+        can.drawString(140, 495, court_date)
     
-    # Time
+    # Time (after "Time:")
     if case_data.get('court_time'):
         court_time = case_data['court_time']
         if hasattr(court_time, 'strftime'):
             court_time = court_time.strftime('%I:%M %p')
-        can.drawString(130, 460, court_time)
+        can.drawString(110, 475, court_time)
     
-    # Division
+    # Division (after "Division:")
     if case_data.get('division'):
-        can.drawString(155, 435, case_data['division'][:15])
+        can.drawString(140, 455, case_data['division'][:12])
     
-    # Checkboxes - use 'X' for checked items
-    checkbox_y = 485
+    # Right side checkboxes in the court box
+    # Case Dispo checkbox
     if case_data.get('case_dispo'):
-        can.drawString(480, checkbox_y, "X")
+        can.drawString(495, 495, "X")
     
+    # Status Check checkbox  
     if case_data.get('status_check'):
-        can.drawString(630, checkbox_y, "X")
+        can.drawString(575, 495, "X")
     
-    checkbox_y = 460
+    # Cal Call checkbox
     if case_data.get('cal_call'):
-        can.drawString(365, checkbox_y, "X")
+        can.drawString(420, 475, "X")
     
+    # Non Jury Trial checkbox
     if case_data.get('non_jury_trial'):
-        can.drawString(520, checkbox_y, "X")
+        can.drawString(500, 475, "X")
     
+    # Jury Trial checkbox
     if case_data.get('jury_trial'):
-        can.drawString(365, checkbox_y - 25, "X")
+        can.drawString(420, 455, "X")
     
+    # Sentencing checkbox
     if case_data.get('sentencing'):
-        can.drawString(520, checkbox_y - 25, "X")
+        can.drawString(500, 455, "X")
     
-    # Other court action
+    # Other court action (after "Other:")
     if case_data.get('other_court_action'):
-        can.drawString(360, checkbox_y - 50, case_data['other_court_action'][:20])
+        can.drawString(420, 435, case_data['other_court_action'][:18])
     
-    # Status checkboxes (left side box)
+    # Status checkboxes (bottom section)
+    # Defendant on Probation/Parole
     if case_data.get('on_probation'):
-        can.drawString(370, 395, "X")
+        can.drawString(385, 415, "X")  # Yes checkbox
     else:
-        can.drawString(325, 395, "X")
+        can.drawString(360, 415, "X")  # No checkbox
     
-    if case_data.get('in_custody'):
-        can.drawString(315, 375, "X")
-    else:
-        can.drawString(270, 375, "X")
-    
-    if case_data.get('veteran'):
-        can.drawString(215, 340, "X")
-    else:
-        can.drawString(170, 340, "X")
-    
-    # Pending charges
+    # Pending Charges  
     if case_data.get('pending_charges'):
-        can.drawString(625, 395, "X")
+        can.drawString(570, 415, "X")  # Yes checkbox
     else:
-        can.drawString(580, 395, "X")
+        can.drawString(545, 415, "X")  # No checkbox
     
-    # Immigration status
+    # Defendant in Custody
+    if case_data.get('in_custody'):
+        can.drawString(385, 395, "X")  # Yes checkbox
+    else:
+        can.drawString(360, 395, "X")  # No checkbox
+    
+    # Immigration Status (after "Immigration Status:")
     if case_data.get('immigration_status'):
-        can.drawString(200, 355, case_data['immigration_status'][:15])
+        can.drawString(220, 375, case_data['immigration_status'][:12])
     
-    # Mental health issues
+    # Veteran
+    if case_data.get('veteran'):
+        can.drawString(220, 355, "X")  # Yes checkbox
+    else:
+        can.drawString(195, 355, "X")  # No checkbox
+    
+    # Case type - Felony and/or MM (this appears to be pre-printed)
+    
+    # Mental Health Issues (text field)
     if case_data.get('mental_health_issues'):
-        can.drawString(180, 305, "Mental health issues noted")
+        can.drawString(160, 315, "Issues noted")
     
     # Physical disabilities  
     if case_data.get('physical_disabilities'):
-        can.drawString(320, 290, "X")
+        can.drawString(320, 295, "X")  # Yes checkbox
     else:
-        can.drawString(260, 290, "X")
+        can.drawString(295, 295, "X")  # No checkbox
     
-    # Comments (limited to prevent overflow)
+    # Comments section (after "Comments:")
     if case_data.get('defendant_comments'):
         comments = case_data['defendant_comments']
-        # Split into lines if needed
+        # Split into lines to fit in the space
         lines = comments.split('\n')
-        y_pos = 260
-        for i, line in enumerate(lines[:3]):  # Max 3 lines
-            if i < 3 and y_pos > 220:
-                can.drawString(120, y_pos, line[:70])
-                y_pos -= 15
+        y_pos = 270
+        for i, line in enumerate(lines[:2]):  # Max 2 lines to fit
+            if y_pos > 250:
+                can.drawString(120, y_pos, line[:65])
+                y_pos -= 12
     
-    # Case number
+    # Case number (after "Case No.:")
     if case_data.get('case_number'):
-        can.drawString(140, 180, case_data['case_number'][:30])
+        can.drawString(120, 220, case_data['case_number'][:25])
     
-    # Charges
+    # Charges (after "Charge")
     if case_data.get('charges'):
         charges = case_data['charges']
         lines = charges.split('\n')
-        y_pos = 180
+        y_pos = 220
         for i, line in enumerate(lines[:3]):  # Max 3 lines
-            if i < 3:
-                can.drawString(480, y_pos, line[:30])
-                y_pos -= 20
+            if y_pos > 200:
+                can.drawString(420, y_pos, line[:25])
+                y_pos -= 12
     
-    # Disposition/Sentence
+    # Disposition/Sentence (after "DISPOSITION/SENTENCE")
     if case_data.get('disposition_sentence'):
         disposition = case_data['disposition_sentence']
-        # Limit to one line to prevent overflow
-        can.drawString(380, 100, disposition[:40])
+        can.drawString(400, 120, disposition[:35])
     
-    # Attorney
+    # Attorney (after "ATTORNEY:")
     if case_data.get('attorney'):
-        can.drawString(165, 70, case_data['attorney'][:20])
+        can.drawString(120, 90, case_data['attorney'][:18])
     
-    # Reset reason
+    # Reset reason (after "Reset Because:")
     if case_data.get('reset_reason'):
-        can.drawString(420, 70, case_data['reset_reason'][:35])
+        can.drawString(390, 90, case_data['reset_reason'][:30])
     
     # Save the overlay
     can.save()
