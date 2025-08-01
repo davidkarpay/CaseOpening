@@ -16,6 +16,14 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, Tuple
 import streamlit as st
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not installed, environment variables must be set manually
+    pass
+
 
 class AuthManager:
     """Handles authentication for the Case Opening Sheet Manager"""
@@ -74,6 +82,18 @@ class AuthManager:
     def _send_email(self, to_email: str, subject: str, message: str) -> bool:
         """Send email using organization's Outlook/Office365 SMTP server"""
         try:
+            # Check for development/mock mode
+            if os.environ.get('EMAIL_MOCK_MODE', '').lower() == 'true':
+                # Mock mode for development - just log the email instead of sending
+                print(f"\n=== MOCK EMAIL ===")
+                print(f"To: {to_email}")
+                print(f"Subject: {subject}")
+                print(f"Message:\n{message}")
+                print(f"==================\n")
+                st.info(f"📧 **Development Mode**: Email would be sent to {to_email}")
+                st.code(f"Subject: {subject}\n\n{message}")
+                return True
+            
             # Use Office365 SMTP server for pd15.org/pd15.state.fl.us domain
             smtp_server = os.environ.get('SMTP_SERVER', 'smtp-mail.outlook.com')
             smtp_port = int(os.environ.get('SMTP_PORT', '587'))
@@ -84,6 +104,7 @@ class AuthManager:
             
             if not all([smtp_username, smtp_password]):
                 st.error("Email service not configured. Please contact your system administrator.")
+                st.info("💡 **For development**: Add `EMAIL_MOCK_MODE=true` to your .env file to enable mock email mode.")
                 return False
             
             # Create email message
