@@ -1,41 +1,53 @@
 # Authentication System Setup Guide
 
-This Case Opening Sheet Manager includes secure authentication for **15th Judicial Circuit Public Defender's Office** staff:
+This Case Opening Sheet Manager now includes enterprise-grade authentication with:
+- Email verification for new accounts
+- Time-limited PIN codes for quick access
+- JWT token-based sessions
+- Domain restriction to @pd15.org and @pd15.state.fl.us emails
 
-## Authentication Features
-- **Account Creation**: Only @pd15.org and @pd15.state.fl.us email addresses allowed
-- **Email Verification**: Required for all new accounts
-- **Two Login Methods**:
-  1. Email + Password (standard login)
-  2. Quick PIN Login (6-digit code sent to email)
+## Email Configuration
 
-## Administrator Setup
+### 1. Set up Email Provider
 
-### 1. Email Configuration Required
+The system supports any SMTP server. For Gmail:
 
-The system administrator must configure a dedicated service email account:
-- **Service Account**: `casemanager@pd15.org` (or similar)
-- **SMTP Server**: Office365/Outlook (`smtp-mail.outlook.com`)
-- **Purpose**: Sends verification codes and PINs to staff emails
+1. Enable 2-Factor Authentication on your Gmail account
+2. Generate an App Password:
+   - Go to Google Account settings
+   - Security → 2-Step Verification → App passwords
+   - Select "Mail" and generate password
+3. Use this app password (not your regular password)
 
 ### 2. Environment Variables
 
-Set these environment variables or create a `.env` file:
+Create a `.env` file in the project root with:
 
 ```bash
-SMTP_SERVER=smtp-mail.outlook.com
+SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USERNAME=casemanager@pd15.org
-SMTP_PASSWORD=service-account-password
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-gmail-app-password
 JWT_SECRET=your-secure-random-jwt-secret
 ```
 
-### 3. Service Account Setup
+**Important**: Add `.env` to your `.gitignore` to keep credentials secure.
 
-The IT administrator must:
-1. Create dedicated service account (e.g., `casemanager@pd15.org`)
-2. Enable SMTP authentication for the account
-3. Provide credentials to application administrator
+### 3. Alternative Email Providers
+
+#### Microsoft Outlook/Office365:
+```bash
+SMTP_SERVER=smtp-mail.outlook.com
+SMTP_PORT=587
+```
+
+#### SendGrid:
+```bash
+SMTP_SERVER=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USERNAME=apikey
+SMTP_PASSWORD=your-sendgrid-api-key
+```
 
 ## Local Development
 
@@ -47,13 +59,13 @@ pip install -r requirements.txt
 ### 2. Set Environment Variables
 ```bash
 # Windows
-set SMTP_USERNAME=casemanager@pd15.org
-set SMTP_PASSWORD=service-account-password
+set SMTP_USERNAME=your-email@gmail.com
+set SMTP_PASSWORD=your-app-password
 set JWT_SECRET=your-secret-key
 
 # Linux/Mac
-export SMTP_USERNAME=casemanager@pd15.org
-export SMTP_PASSWORD=service-account-password
+export SMTP_USERNAME=your-email@gmail.com
+export SMTP_PASSWORD=your-app-password
 export JWT_SECRET=your-secret-key
 ```
 
@@ -64,41 +76,51 @@ streamlit run case-opening-app.py
 
 ## Streamlit Cloud Deployment
 
-Add these secrets in your Streamlit Cloud dashboard:
+### 1. Add Secrets to Streamlit Cloud
+
+In your Streamlit Cloud dashboard:
+
+1. Go to your app settings
+2. Click "Secrets"
+3. Add:
 
 ```toml
 [default]
-SMTP_SERVER = "smtp-mail.outlook.com"
+SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = "587"
-SMTP_USERNAME = "casemanager@pd15.org"
-SMTP_PASSWORD = "service-account-password"
+SMTP_USERNAME = "your-email@gmail.com"
+SMTP_PASSWORD = "your-gmail-app-password"
 JWT_SECRET = "your-secure-random-jwt-secret"
 ```
 
-## How It Works
+### 2. Update Authentication Module
 
-### 1. Account Creation
-1. User enters **@pd15.org or @pd15.state.fl.us email** and password
-2. System validates email domain (rejects non-PD emails)
-3. Verification email sent to user's work email
-4. User enters 6-digit code to activate account (10-minute expiry)
+For Streamlit Cloud, modify `modules/auth.py` to use Streamlit secrets:
 
-### 2. Login Options
-**Option A - Email + Password:**
-1. User enters email and password
-2. Immediate access granted
+```python
+# Replace environment variable calls with:
+smtp_username = st.secrets.get("SMTP_USERNAME")
+smtp_password = st.secrets.get("SMTP_PASSWORD")
+jwt_secret = st.secrets.get("JWT_SECRET", "fallback-secret")
+```
 
-**Option B - Quick PIN Login:**
-1. User enters email address
-2. 6-digit PIN sent to their work email (5-minute expiry)
+## Authentication Flow
+
+### 1. New User Registration
+1. User enters username, email, password
+2. System validates email domain (@pd15.org or @pd15.state.fl.us)
+3. Verification code sent to email (10-minute expiry)
+4. User enters code to activate account
+
+### 2. Standard Login
+1. User enters username/password
+2. System generates JWT token (24-hour expiry)
+3. User gains access to application
+
+### 3. Quick PIN Login
+1. User enters username
+2. System sends 6-digit PIN to registered email (5-minute expiry)
 3. User enters PIN for instant access
-
-### 3. Email Flow
-```
-System Email Account → User's Work Email
-casemanager@pd15.org → john@pd15.org
-    (Verification codes & PINs)
-```
 
 ## Security Features
 
@@ -143,7 +165,7 @@ self.allowed_domains = ['@pd15.org', '@pd15.state.fl.us', '@newdomain.com']
 ```
 
 ### Reset User Password
-Delete user from `data/users.json` (find by email address) and have them re-register.
+Delete user from `data/users.json` and have them re-register.
 
 ### View User Activity
 Check `lastLogin` timestamps in `data/users.json`.

@@ -60,34 +60,55 @@ Uses Streamlit session state for:
 - `edit_mode`: Boolean flag for edit vs. new case mode
 - `selected_case_id`: ID of currently selected case
 
-### File Structure Issue
-**IMPORTANT**: The code expects a `modules/` directory structure but the current implementation has all module files in the root directory with `case-` prefixes. Before running the application, you need to either:
-
-1. Create the expected structure:
-   ```bash
-   mkdir modules
-   touch modules/__init__.py
-   mv case-database-module.py modules/database.py
-   mv case-forms-module.py modules/forms.py
-   mv case-pdf-generator.py modules/pdf_generator.py
-   mv case-utils-module.py modules/utils.py
-   ```
-
-2. Or update the imports in `case-opening-app.py` to match the current structure:
-   ```python
-   from case_pdf_generator import generate_case_pdf
-   from case_database_module import CaseDatabase
-   from case_forms_module import render_defendant_info, render_case_info, render_court_info
-   from case_utils_module import format_phone, parse_date
-   ```
+### Module Structure
+The application uses a clean `modules/` directory structure:
+- `modules/database.py`: CaseDatabase class for JSON-based data management
+- `modules/forms.py`: Streamlit form rendering components
+- `modules/pdf_generator.py`: PDF generation using ReportLab
+- `modules/utils.py`: Utility functions for data formatting and validation
+- `modules/auth.py`: Authentication and user management
+- `modules/auth_ui.py`: Authentication UI components
+- `modules/secure_credentials.py`: Encrypted credential management
+- `modules/settings_page.py`: Application settings interface
 
 ## Testing and Validation
 
-No specific test framework is configured. Manual testing involves:
-1. Running the Streamlit app
-2. Testing case creation, editing, and deletion
-3. Verifying PDF generation functionality
-4. Testing search and export features
+The project includes comprehensive automated testing with pytest:
+
+### Test Framework
+- **pytest**: Test runner with fixtures and parameterized testing
+- **Coverage**: 80% minimum coverage requirement with HTML reports
+- **Mocking**: Extensive use of unittest.mock for external dependencies
+- **Integration**: End-to-end workflow testing
+
+### Running Tests
+```bash
+# Install test dependencies
+pip install -r tests/requirements-test.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=modules --cov=case-opening-app
+
+# Run specific test categories
+pytest -m unit          # Unit tests
+pytest -m integration   # Integration tests
+pytest -m security      # Security tests
+```
+
+### Test Categories
+- **Unit Tests**: Individual function and class testing
+- **Integration Tests**: Module interaction and workflow testing  
+- **Security Tests**: Authentication and data protection testing
+- **Performance Tests**: Database and PDF generation benchmarks
+
+### Continuous Integration
+All tests run automatically via GitHub Actions on:
+- Pull requests to main branches
+- Pushes to master/main branches
+- Daily security scans
 
 ## Security Considerations
 
