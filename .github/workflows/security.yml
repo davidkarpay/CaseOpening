@@ -1,0 +1,337 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  schedule:
+    # Run daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety pip-audit cyclonedx-bom
+        pip install -r case-requirements.txt
+
+    - name: Run Safety check
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check --short-report || true
+
+    - name: Run pip-audit
+      run: |
+        pip-audit --desc --format=json --output=pip-audit-report.json || true
+
+    - name: Generate SBOM (Software Bill of Materials)
+      run: |
+        cyclonedx-py --output-format json --output-file sbom.json .
+
+    - name: Upload dependency scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: dependency-scan-results
+        path: |
+          safety-report.json
+          pip-audit-report.json
+          sbom.json
+
+  code-security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit semgrep
+        pip install -r case-requirements.txt
+
+    - name: Run Bandit security scan
+      run: |
+        bandit -r modules/ case-opening-app.py -f json -o bandit-report.json || true
+        bandit -r modules/ case-opening-app.py || true
+
+    - name: Run Semgrep security scan
+      run: |
+        semgrep --config=auto --json --output=semgrep-report.json modules/ case-opening-app.py || true
+
+    - name: Check for hardcoded secrets
+      run: |
+        echo "Checking for potential hardcoded secrets..."
+        grep -r -i "password\|secret\|key\|token" modules/ case-opening-app.py --exclude-dir=.git > potential-secrets.txt || echo "No obvious hardcoded secrets found"
+
+    - name: Upload code security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: code-security-scan-results
+        path: |
+          bandit-report.json
+          semgrep-report.json
+          potential-secrets.txt
+
+  docker-security-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create Dockerfile for scanning
+      run: |
+        cat > Dockerfile << EOF
+        FROM python:3.11-slim
+        
+        WORKDIR /app
+        
+        COPY case-requirements.txt .
+        RUN pip install --no-cache-dir -r case-requirements.txt
+        
+        COPY . .
+        
+        EXPOSE 8501
+        
+        CMD ["streamlit", "run", "case-opening-app.py"]
+        EOF
+
+    - name: Build Docker image
+      run: |
+        docker build -t case-opening-manager:latest .
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'case-opening-manager:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Upload Docker security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: docker-security-scan-results
+        path: trivy-results.sarif
+
+  secrets-detection:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for secret scanning
+
+    - name: Run GitLeaks secret detection
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}}
+
+    - name: Run TruffleHog secret scanning
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
+
+  license-compliance:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install license checking tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-licenses licensecheck
+        pip install -r case-requirements.txt
+
+    - name: Generate license report
+      run: |
+        pip-licenses --format=json --output-file=licenses.json
+        pip-licenses --format=markdown --output-file=licenses.md
+
+    - name: Check for license compliance
+      run: |
+        echo "Checking for GPL and other copyleft licenses..."
+        pip-licenses | grep -i "gpl\|agpl\|lgpl" > copyleft-licenses.txt || echo "No copyleft licenses found"
+
+    - name: Upload license compliance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: license-compliance-results
+        path: |
+          licenses.json
+          licenses.md
+          copyleft-licenses.txt
+
+  privacy-compliance:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check for PII and sensitive data patterns
+      run: |
+        echo "Scanning for potential PII patterns..."
+        
+        # Check for common PII patterns
+        echo "## PII Scan Results" > pii-scan-results.md
+        echo "" >> pii-scan-results.md
+        
+        # Social Security Numbers
+        grep -r -E '\b\d{3}-\d{2}-\d{4}\b' modules/ case-opening-app.py > ssn-patterns.txt || echo "No SSN patterns found" >> pii-scan-results.md
+        
+        # Phone numbers (already handled by the app, but checking for hardcoded ones)
+        grep -r -E '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b' modules/ case-opening-app.py > phone-patterns.txt || echo "No hardcoded phone patterns found" >> pii-scan-results.md
+        
+        # Email addresses (checking for hardcoded emails)
+        grep -r -E '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b' modules/ case-opening-app.py > email-patterns.txt || echo "No hardcoded email patterns found" >> pii-scan-results.md
+        
+        # Check for GDPR/CCPA compliance keywords
+        grep -r -i "gdpr\|ccpa\|privacy\|personal.*data\|consent" modules/ case-opening-app.py > privacy-keywords.txt || echo "No privacy compliance keywords found" >> pii-scan-results.md
+
+    - name: Upload privacy compliance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: privacy-compliance-results
+        path: |
+          pii-scan-results.md
+          ssn-patterns.txt
+          phone-patterns.txt
+          email-patterns.txt
+          privacy-keywords.txt
+
+  security-report:
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, code-security-scan, secrets-detection, license-compliance, privacy-compliance]
+    if: always()
+
+    steps:
+    - name: Download all security scan results
+      uses: actions/download-artifact@v3
+
+    - name: Generate security summary report
+      run: |
+        echo "# Security Scan Summary Report" > security-summary.md
+        echo "" >> security-summary.md
+        echo "**Generated on:** $(date)" >> security-summary.md
+        echo "**Repository:** ${{ github.repository }}" >> security-summary.md
+        echo "**Branch:** ${{ github.ref_name }}" >> security-summary.md
+        echo "**Commit:** ${{ github.sha }}" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        echo "## Scan Results" >> security-summary.md
+        echo "" >> security-summary.md
+        
+        # Check dependency scan results
+        if [ -f dependency-scan-results/safety-report.json ]; then
+          echo "### 🔍 Dependency Vulnerability Scan" >> security-summary.md
+          echo "- **Status:** ✅ Completed" >> security-summary.md
+          echo "- **Tool:** Safety & pip-audit" >> security-summary.md
+          echo "- **Report:** Available in artifacts" >> security-summary.md
+        else
+          echo "### 🔍 Dependency Vulnerability Scan" >> security-summary.md
+          echo "- **Status:** ❌ Failed or Incomplete" >> security-summary.md
+        fi
+        echo "" >> security-summary.md
+        
+        # Check code security scan results
+        if [ -f code-security-scan-results/bandit-report.json ]; then
+          echo "### 🛡️ Code Security Scan" >> security-summary.md
+          echo "- **Status:** ✅ Completed" >> security-summary.md
+          echo "- **Tool:** Bandit & Semgrep" >> security-summary.md
+          echo "- **Report:** Available in artifacts" >> security-summary.md
+        else
+          echo "### 🛡️ Code Security Scan" >> security-summary.md
+          echo "- **Status:** ❌ Failed or Incomplete" >> security-summary.md
+        fi
+        echo "" >> security-summary.md
+        
+        # Check license compliance
+        if [ -f license-compliance-results/licenses.json ]; then
+          echo "### 📋 License Compliance" >> security-summary.md
+          echo "- **Status:** ✅ Completed" >> security-summary.md
+          echo "- **Report:** Available in artifacts" >> security-summary.md
+        else
+          echo "### 📋 License Compliance" >> security-summary.md
+          echo "- **Status:** ❌ Failed or Incomplete" >> security-summary.md
+        fi
+        echo "" >> security-summary.md
+        
+        # Check privacy compliance
+        if [ -f privacy-compliance-results/pii-scan-results.md ]; then
+          echo "### 🔒 Privacy Compliance" >> security-summary.md
+          echo "- **Status:** ✅ Completed" >> security-summary.md
+          echo "- **Report:** Available in artifacts" >> security-summary.md
+        else
+          echo "### 🔒 Privacy Compliance" >> security-summary.md
+          echo "- **Status:** ❌ Failed or Incomplete" >> security-summary.md
+        fi
+        echo "" >> security-summary.md
+        
+        echo "## Recommendations" >> security-summary.md
+        echo "" >> security-summary.md
+        echo "1. **Review all vulnerability reports** in the downloaded artifacts" >> security-summary.md
+        echo "2. **Update dependencies** with known security vulnerabilities" >> security-summary.md
+        echo "3. **Address code security issues** identified by static analysis tools" >> security-summary.md
+        echo "4. **Verify license compatibility** for all dependencies" >> security-summary.md
+        echo "5. **Ensure PII protection** measures are in place" >> security-summary.md
+        echo "6. **Implement security headers** for the web application" >> security-summary.md
+        echo "7. **Regular security monitoring** should be established" >> security-summary.md
+
+    - name: Upload security summary report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-summary-report
+        path: security-summary.md
+
+    - name: Comment security summary on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('security-summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });

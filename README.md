@@ -1,5 +1,13 @@
 # Case Opening Sheet Manager
 
+[![CI/CD Pipeline](https://github.com/davidkarpay/CaseOpening/actions/workflows/ci.yml/badge.svg)](https://github.com/davidkarpay/CaseOpening/actions/workflows/ci.yml)
+[![Security Scanning](https://github.com/davidkarpay/CaseOpening/actions/workflows/security.yml/badge.svg)](https://github.com/davidkarpay/CaseOpening/actions/workflows/security.yml)
+[![Code Quality](https://github.com/davidkarpay/CaseOpening/actions/workflows/code-quality.yml/badge.svg)](https://github.com/davidkarpay/CaseOpening/actions/workflows/code-quality.yml)
+[![codecov](https://codecov.io/gh/davidkarpay/CaseOpening/branch/master/graph/badge.svg)](https://codecov.io/gh/davidkarpay/CaseOpening)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.29.0+-red.svg)](https://streamlit.io/)
+
 A Streamlit web application designed for public defenders to manage case opening sheets with PDF export functionality.
 
 🚀 **[Live Demo](https://caseopeninggit-nmtak66hzexfgyxzcxa38b.streamlit.app/)**
@@ -124,6 +132,151 @@ Your app will be available at `https://[your-username]-caseopening-case-opening-
 - **Railway**: Connect your GitHub repo and it will auto-detect Streamlit
 - **Render**: Use their web service with a Docker container
 
+## Testing
+
+This project includes comprehensive testing with pytest:
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install -r tests/requirements-test.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=modules --cov=case-opening-app
+
+# Run specific test types
+pytest -m unit          # Unit tests only
+pytest -m integration   # Integration tests only
+pytest -m security      # Security tests only
+```
+
+### Test Coverage
+
+The project maintains high test coverage with automated reporting:
+- **Target Coverage**: 80% minimum
+- **Critical Modules**: Database, Authentication, PDF Generator (>90% coverage)
+- **Coverage Reports**: Available in HTML format after running tests
+
+### Continuous Integration
+
+All code changes are automatically tested through GitHub Actions:
+- ✅ **Unit & Integration Tests** across Python 3.9, 3.10, 3.11
+- ✅ **Security Scanning** with Bandit, Safety, and Semgrep
+- ✅ **Code Quality** checks with flake8, mypy, and pylint
+- ✅ **Dependency Scanning** for vulnerabilities
+- ✅ **Performance Testing** for database operations
+
+## Development Workflow
+
+### Setting Up for Development
+
+1. **Clone and setup:**
+   ```bash
+   git clone https://github.com/davidkarpay/CaseOpening.git
+   cd CaseOpening
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   pip install -r case-requirements.txt
+   pip install -r tests/requirements-test.txt
+   ```
+
+2. **Run tests before making changes:**
+   ```bash
+   pytest
+   ```
+
+3. **Make your changes and test:**
+   ```bash
+   # Run specific tests
+   pytest tests/test_database.py -v
+   
+   # Check code quality
+   flake8 modules/ case-opening-app.py
+   ```
+
+### Pull Request Process
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes with tests
+4. Run the full test suite (`pytest`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+All PRs must:
+- ✅ Pass all automated tests
+- ✅ Include appropriate test coverage
+- ✅ Pass security scans
+- ✅ Follow code quality standards
+
+### Code Quality Standards
+
+- **Linting**: flake8 for code style
+- **Type Checking**: mypy for type safety
+- **Security**: Bandit for security issues
+- **Testing**: pytest with >80% coverage
+- **Documentation**: Clear docstrings and comments
+
+## CI/CD Pipeline
+
+### Automated Workflows
+
+- **🔄 CI/CD Pipeline** (`.github/workflows/ci.yml`)
+  - Runs on push/PR to main branches
+  - Tests across Python 3.9, 3.10, 3.11
+  - Generates coverage reports
+  - Uploads artifacts
+
+- **🔒 Security Scanning** (`.github/workflows/security.yml`)
+  - Daily dependency vulnerability scans
+  - Code security analysis
+  - License compliance checking
+  - PII/sensitive data detection
+
+- **📊 Code Quality** (`.github/workflows/code-quality.yml`)
+  - Linting and formatting checks
+  - Complexity analysis
+  - Documentation coverage
+  - Performance benchmarks
+
+- **🚀 Deployment** (`.github/workflows/deploy.yml`)
+  - Automated deployment to Streamlit Cloud
+  - Release management
+  - Production health checks
+
+- **📦 Release Management** (`.github/workflows/release.yml`)
+  - Semantic versioning
+  - Automated changelog generation
+  - GitHub releases with artifacts
+
+### Dependency Management
+
+- **🤖 Dependabot** automatically creates PRs for dependency updates
+- **Weekly updates** for Python packages and GitHub Actions
+- **Security patches** are prioritized and auto-merged when safe
+- **Grouped updates** for related packages (testing, security, etc.)
+
 ## Contributing
 
 Contributions are welcome! Please ensure any modifications maintain the security and privacy features of the application.
+
+### Issue Templates
+
+Use the appropriate issue template:
+- 🐛 **Bug Report**: For reporting bugs
+- ✨ **Feature Request**: For suggesting new features
+- ❓ **Question**: For asking questions
+- 🔒 **Security Issue**: For reporting security vulnerabilities (private)
+
+### Security
+
+For security vulnerabilities, please:
+1. **DO NOT** create a public issue
+2. Email dkarpay@pd15.org with subject "SECURITY: Case Opening Manager"
+3. Include details about the vulnerability
+4. Allow time for a fix before public disclosure

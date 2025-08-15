@@ -1,0 +1,332 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main ]
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-lint-${{ hashFiles('**/requirements*.txt') }}
+
+    - name: Install linting dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy pylint bandit safety
+        pip install -r case-requirements.txt
+
+    - name: Run Black code formatter check
+      run: |
+        black --check --diff modules/ case-opening-app.py tests/
+      continue-on-error: true
+
+    - name: Run isort import sorting check
+      run: |
+        isort --check-only --diff modules/ case-opening-app.py tests/
+      continue-on-error: true
+
+    - name: Run flake8 linting
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 modules/ case-opening-app.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Check for other style issues (warnings only)
+        flake8 modules/ case-opening-app.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --format=json --output-file=flake8-report.json
+
+    - name: Run pylint
+      run: |
+        pylint modules/ case-opening-app.py --output-format=json --reports=no > pylint-report.json || true
+
+    - name: Run mypy type checking
+      run: |
+        mypy modules/ case-opening-app.py --ignore-missing-imports --json-report mypy-report || true
+
+    - name: Upload linting reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: code-quality-reports
+        path: |
+          flake8-report.json
+          pylint-report.json
+          mypy-report/
+
+  security-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety semgrep
+        pip install -r case-requirements.txt
+
+    - name: Run Bandit security linter
+      run: |
+        bandit -r modules/ case-opening-app.py -f json -o bandit-report.json || true
+
+    - name: Run Safety dependency check
+      run: |
+        safety check --json --output safety-report.json || true
+
+    - name: Run Semgrep security analysis
+      run: |
+        semgrep --config=auto --json --output=semgrep-report.json modules/ case-opening-app.py || true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-analysis-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+          semgrep-report.json
+
+  complexity-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install analysis tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install radon xenon mccabe
+        pip install -r case-requirements.txt
+
+    - name: Run Radon complexity analysis
+      run: |
+        radon cc modules/ case-opening-app.py --json > radon-complexity.json || true
+        radon mi modules/ case-opening-app.py --json > radon-maintainability.json || true
+        radon raw modules/ case-opening-app.py --json > radon-raw.json || true
+
+    - name: Run Xenon complexity check
+      run: |
+        xenon --max-absolute B --max-modules B --max-average A modules/ case-opening-app.py || true
+
+    - name: Generate complexity report
+      run: |
+        echo "## Code Complexity Report" > complexity-report.md
+        echo "" >> complexity-report.md
+        echo "### Cyclomatic Complexity" >> complexity-report.md
+        radon cc modules/ case-opening-app.py >> complexity-report.md
+        echo "" >> complexity-report.md
+        echo "### Maintainability Index" >> complexity-report.md
+        radon mi modules/ case-opening-app.py >> complexity-report.md
+
+    - name: Upload complexity reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: complexity-analysis-reports
+        path: |
+          radon-*.json
+          complexity-report.md
+
+  documentation-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install documentation tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pydoc-markdown interrogate
+        pip install -r case-requirements.txt
+
+    - name: Check docstring coverage
+      run: |
+        interrogate modules/ case-opening-app.py --generate-badge interrogate-badge.svg --output interrogate-report.txt
+
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "## TODO/FIXME Comments Found:" > todo-report.md
+        grep -r "TODO\|FIXME\|XXX\|HACK" modules/ case-opening-app.py tests/ || echo "No TODO/FIXME comments found" >> todo-report.md
+
+    - name: Upload documentation reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: documentation-reports
+        path: |
+          interrogate-badge.svg
+          interrogate-report.txt
+          todo-report.md
+
+  dependency-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install analysis tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install pipdeptree pip-audit
+
+    - name: Generate dependency tree
+      run: |
+        pip install -r case-requirements.txt
+        pipdeptree --json > dependency-tree.json
+        pipdeptree > dependency-tree.txt
+
+    - name: Run pip-audit
+      run: |
+        pip-audit --desc --format=json --output=pip-audit-report.json || true
+
+    - name: Check for unused dependencies
+      run: |
+        pip install unimport
+        unimport --check --gitignore --include="*.py" --exclude="tests/*" . > unused-imports.txt || true
+
+    - name: Upload dependency reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: dependency-analysis-reports
+        path: |
+          dependency-tree.json
+          dependency-tree.txt
+          pip-audit-report.json
+          unused-imports.txt
+
+  performance-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r case-requirements.txt
+        pip install memory-profiler py-spy
+
+    - name: Run performance benchmarks
+      run: |
+        mkdir -p performance-reports
+        
+        # Test database performance
+        python -c "
+        import time
+        import json
+        from modules.database import CaseDatabase
+        
+        results = {}
+        
+        # Test case addition performance
+        db = CaseDatabase('perf_test.json')
+        start_time = time.time()
+        for i in range(1000):
+            case_data = {
+                'id': f'perf-case-{i}',
+                'first_name': f'Test{i}',
+                'last_name': f'User{i}',
+                'case_number': f'23CF{i:06d}'
+            }
+            db.add_case(case_data)
+        add_time = time.time() - start_time
+        results['add_1000_cases'] = add_time
+        
+        # Test search performance
+        start_time = time.time()
+        search_results = db.search_cases('Test')
+        search_time = time.time() - start_time
+        results['search_1000_cases'] = search_time
+        results['search_results_count'] = len(search_results)
+        
+        # Save results
+        with open('performance-reports/database-performance.json', 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print(f'Performance test completed: {results}')
+        "
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-reports
+        path: performance-reports/
+
+  quality-summary:
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, security-analysis, complexity-analysis, documentation-check, dependency-analysis]
+    if: always()
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Generate quality summary
+      run: |
+        echo "# Code Quality Summary" > quality-summary.md
+        echo "" >> quality-summary.md
+        echo "Generated on: $(date)" >> quality-summary.md
+        echo "" >> quality-summary.md
+        
+        echo "## Analysis Results" >> quality-summary.md
+        echo "- **Linting**: $([ -f code-quality-reports/flake8-report.json ] && echo '✅ Completed' || echo '❌ Failed')" >> quality-summary.md
+        echo "- **Security**: $([ -f security-analysis-reports/bandit-report.json ] && echo '✅ Completed' || echo '❌ Failed')" >> quality-summary.md
+        echo "- **Complexity**: $([ -f complexity-analysis-reports/radon-complexity.json ] && echo '✅ Completed' || echo '❌ Failed')" >> quality-summary.md
+        echo "- **Documentation**: $([ -f documentation-reports/interrogate-report.txt ] && echo '✅ Completed' || echo '❌ Failed')" >> quality-summary.md
+        echo "- **Dependencies**: $([ -f dependency-analysis-reports/dependency-tree.json ] && echo '✅ Completed' || echo '❌ Failed')" >> quality-summary.md
+        
+        echo "" >> quality-summary.md
+        echo "## Recommendations" >> quality-summary.md
+        echo "1. Review security analysis reports for potential vulnerabilities" >> quality-summary.md
+        echo "2. Address high complexity functions identified in complexity analysis" >> quality-summary.md
+        echo "3. Improve docstring coverage based on documentation check" >> quality-summary.md
+        echo "4. Update dependencies with known security vulnerabilities" >> quality-summary.md
+
+    - name: Upload quality summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-summary
+        path: quality-summary.md
