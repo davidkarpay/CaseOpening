@@ -9,16 +9,28 @@ from reportlab.lib import colors
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
+from .utils import secure_filename, sanitize_input
 
 def generate_case_pdf(case_data: Dict) -> str:
-    """Generate PDF from case data"""
-    # Create filename
-    defendant_name = f"{case_data.get('last_name', 'Unknown')}_{case_data.get('first_name', '')}"
-    case_number = case_data.get('case_number', 'no_case_number').replace('/', '_')
+    """Generate PDF from case data with security validation"""
+    # Sanitize input data for filename creation
+    last_name = sanitize_input(case_data.get('last_name', 'Unknown'), max_length=50)
+    first_name = sanitize_input(case_data.get('first_name', ''), max_length=50)
+    case_number = sanitize_input(case_data.get('case_number', 'no_case_number'), max_length=50)
+    
+    # Create secure filename
+    defendant_name = f"{last_name}_{first_name}" if first_name else last_name
+    case_number_clean = case_number.replace('/', '_').replace('\\', '_')
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    filename = f"exports/pdfs/{defendant_name}_{case_number}_{timestamp}.pdf"
-    Path("exports/pdfs").mkdir(parents=True, exist_ok=True)
+    base_filename = f"{defendant_name}_{case_number_clean}_{timestamp}.pdf"
+    secure_name = secure_filename(base_filename)
+    
+    # Ensure exports directory exists with proper permissions
+    export_dir = Path("exports/pdfs")
+    export_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+    
+    filename = str(export_dir / secure_name)
     
     # Create PDF
     doc = SimpleDocTemplate(

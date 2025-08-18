@@ -2,8 +2,10 @@
 Utility functions for the Case Opening Sheet application
 """
 import re
+import html
+import unicodedata
 from datetime import datetime, date
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 
 def format_phone(phone: str) -> str:
     """Format phone number to (XXX) XXX-XXXX"""
@@ -54,31 +56,169 @@ def format_date(date_obj: Union[date, datetime, str]) -> str:
     
     return ""
 
+
+def sanitize_input(input_str: str, max_length: int = 255, allow_html: bool = False) -> str:
+    """Sanitize user input to prevent XSS and injection attacks"""
+    if not isinstance(input_str, str):
+        return ""
+    
+    # Normalize unicode characters
+    input_str = unicodedata.normalize('NFKC', input_str)
+    
+    # Strip leading/trailing whitespace
+    input_str = input_str.strip()
+    
+    # Truncate to maximum length
+    if len(input_str) > max_length:
+        input_str = input_str[:max_length]
+    
+    # HTML escape unless explicitly allowing HTML
+    if not allow_html:
+        input_str = html.escape(input_str)
+    
+    # Remove null bytes and control characters (except newline and tab)
+    input_str = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', input_str)
+    
+    return input_str
+
+
 def validate_case_number(case_number: str) -> bool:
     """Validate case number format"""
-    # Basic validation - can be customized based on your jurisdiction's format
     if not case_number:
         return False
     
-    # Example pattern: YYYY-CF-XXXXXX or YYYY-MM-XXXXXX
-    pattern = r'^\d{4}-[A-Z]{2}-\d{6}$'
-    return bool(re.match(pattern, case_number.upper()))
-
-def sanitize_filename(filename: str) -> str:
-    """Sanitize filename for safe file system usage"""
-    # Remove or replace invalid characters
-    invalid_chars = '<>:"/\\|?*'
-    for char in invalid_chars:
-        filename = filename.replace(char, '_')
+    # Sanitize first
+    case_number = sanitize_input(case_number, max_length=50)
     
-    # Remove multiple underscores
-    filename = re.sub(r'_+', '_', filename)
+    # Common case number patterns - adjust for your jurisdiction
+    patterns = [
+        r'^\d{2}CF\d{6}$',           # 23CF000123
+        r'^\d{4}-CF-\d{6}$',         # 2023-CF-000123
+        r'^\d{2}[A-Z]{2}\d{6}[A-Z]*$',  # 23CF000123AMB
+    ]
+    
+    return any(re.match(pattern, case_number.upper()) for pattern in patterns)
+
+
+def validate_email(email: str) -> bool:
+    """Validate email address format"""
+    if not email:
+        return False
+    
+    # Basic email validation pattern
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email)) and len(email) <= 254
+
+
+def validate_phone(phone: str) -> bool:
+    """Validate phone number format"""
+    if not phone:
+        return False
+    
+    # Extract digits only
+    digits = re.sub(r'\D', '', phone)
+    
+    # Valid lengths: 7 (local), 10 (US), 11 (US with country code)
+    return len(digits) in [7, 10, 11]
+
+
+def validate_name(name: str) -> bool:
+    """Validate person name (letters, spaces, hyphens, apostrophes only)"""
+    if not name:
+        return False
+    
+    name = sanitize_input(name, max_length=100)
+    
+    # Allow letters, spaces, hyphens, apostrophes, periods
+    pattern = r'^[a-zA-Z\s\-\'.]+$'
+    return bool(re.match(pattern, name)) and len(name.strip()) >= 1
+
+
+def sanitize_case_data(case_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Sanitize all case data fields"""
+    if not isinstance(case_data, dict):
+        return {}
+    
+    sanitized = {}
+    
+    # Define field-specific sanitization rules
+    text_fields = ['first_name', 'last_name', 'middle_name', 'address', 'city', 'state', 
+                   'charges', 'attorney', 'judge', 'court', 'notes']
+    phone_fields = ['phone', 'emergency_phone']
+    email_fields = ['email']
+    case_number_fields = ['case_number']
+    
+    for key, value in case_data.items():
+        if value is None:
+            sanitized[key] = value
+        elif key in text_fields:
+            sanitized[key] = sanitize_input(str(value), max_length=500)
+        elif key in phone_fields:
+            # Sanitize and format phone
+            phone_clean = sanitize_input(str(value), max_length=20)
+            if validate_phone(phone_clean):
+                sanitized[key] = format_phone(phone_clean)
+            else:
+                sanitized[key] = phone_clean  # Keep original if invalid
+        elif key in email_fields:
+            email_clean = sanitize_input(str(value), max_length=254).lower()
+            sanitized[key] = email_clean if validate_email(email_clean) else ""
+        elif key in case_number_fields:
+            case_num_clean = sanitize_input(str(value), max_length=50)
+            sanitized[key] = case_num_clean
+        elif key == 'zip_code':
+            # ZIP code validation (US format)
+            zip_clean = re.sub(r'\D', '', str(value))[:10]  # Max 10 digits
+            sanitized[key] = zip_clean
+        else:
+            # Generic sanitization for other fields
+            sanitized[key] = sanitize_input(str(value), max_length=1000)
+    
+    return sanitized
+
+
+def validate_file_path(file_path: str, allowed_extensions: Optional[list] = None) -> bool:
+    """Validate file path for security"""
+    if not file_path:
+        return False
+    
+    # Normalize path
+    file_path = str(file_path).strip()
+    
+    # Check for path traversal attempts
+    if '..' in file_path or file_path.startswith('/') or ':' in file_path[:3]:
+        return False
+    
+    # Check file extension if specified
+    if allowed_extensions:
+        extension = file_path.lower().split('.')[-1] if '.' in file_path else ''
+        if extension not in [ext.lower().lstrip('.') for ext in allowed_extensions]:
+            return False
+    
+    return True
+
+
+def secure_filename(filename: str) -> str:
+    """Generate a secure filename by removing dangerous characters"""
+    if not filename:
+        return "unnamed_file"
+    
+    # Remove path components
+    filename = filename.split('/')[-1].split('\\')[-1]
+    
+    # Remove dangerous characters
+    filename = re.sub(r'[^\w\-_\.]', '_', filename)
+    
+    # Ensure it doesn't start with a dot (hidden file)
+    filename = filename.lstrip('.')
     
     # Limit length
     if len(filename) > 100:
-        filename = filename[:100]
+        name, ext = filename.rsplit('.', 1) if '.' in filename else (filename, '')
+        filename = name[:95] + ('.' + ext if ext else '')
     
-    return filename.strip('_')
+    return filename or "unnamed_file"
+
 
 def calculate_age(birth_date: Union[date, datetime]) -> int:
     """Calculate age from birth date"""

@@ -7,7 +7,7 @@ from modules.pdf_generator import generate_case_pdf
 from modules.pdf_form_filler import fill_official_form
 from modules.database import CaseDatabase
 from modules.forms import render_defendant_info, render_case_info, render_court_info
-from modules.utils import format_phone, parse_date
+from modules.utils import format_phone, parse_date, sanitize_case_data, validate_required_fields
 from modules.auth_ui import check_authentication, show_user_info
 
 # Page config
@@ -44,8 +44,17 @@ def clear_form():
     st.session_state.selected_case_id = None
 
 def save_case():
-    """Save current case to database"""
+    """Save current case to database with security validation"""
     case_data = st.session_state.current_case.copy()
+    
+    # Validate required fields
+    is_valid, missing_fields = validate_required_fields(case_data)
+    if not is_valid:
+        st.error(f"Missing required fields: {', '.join(missing_fields)}")
+        return None
+    
+    # Sanitize all input data
+    case_data = sanitize_case_data(case_data)
     
     # Add metadata
     if not st.session_state.edit_mode:
@@ -54,12 +63,21 @@ def save_case():
     case_data['updated_at'] = datetime.now().isoformat()
     
     # Save to database
-    if st.session_state.edit_mode:
-        db.update_case(st.session_state.selected_case_id, case_data)
-    else:
-        db.add_case(case_data)
-    
-    return case_data
+    try:
+        if st.session_state.edit_mode:
+            success = db.update_case(st.session_state.selected_case_id, case_data)
+        else:
+            success = db.add_case(case_data)
+        
+        if success:
+            st.success("Case saved successfully!")
+            return case_data
+        else:
+            st.error("Failed to save case. Please try again.")
+            return None
+    except Exception as e:
+        st.error(f"Error saving case: {str(e)}")
+        return None
 
 # Main UI
 st.title("⚖️ Case Opening Sheet Manager")

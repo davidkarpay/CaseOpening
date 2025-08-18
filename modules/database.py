@@ -1,10 +1,12 @@
 """
-Database module for managing cases in JSON format
+Database module for managing cases in JSON format with security enhancements
 """
 import json
+import os
 from pathlib import Path
 from typing import List, Dict, Optional
 import logging
+from .utils import sanitize_input, validate_file_path
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +14,14 @@ class CaseDatabase:
     """JSON-based database for case management"""
     
     def __init__(self, db_path: str = "data/cases.json"):
+        # Validate and secure the database path
+        if not validate_file_path(db_path, allowed_extensions=['.json']):
+            raise ValueError(f"Invalid database path: {db_path}")
+        
         self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(exist_ok=True)
+        
+        # Create parent directory with secure permissions
+        self.db_path.parent.mkdir(exist_ok=True, mode=0o700)
         self._ensure_db_exists()
     
     def _ensure_db_exists(self):
@@ -31,12 +39,33 @@ class CaseDatabase:
             return []
     
     def _save_data(self, data: List[Dict]):
-        """Save data to JSON file"""
+        """Save data to JSON file with atomic write and backup"""
         try:
-            with open(self.db_path, 'w') as f:
-                json.dump(data, f, indent=2)
+            # Create backup of existing file
+            if self.db_path.exists():
+                backup_path = self.db_path.with_suffix('.json.bak')
+                self.db_path.replace(backup_path)
+            
+            # Atomic write using temporary file
+            temp_path = self.db_path.with_suffix('.json.tmp')
+            with open(temp_path, 'w') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())  # Force write to disk
+            
+            # Move temp file to final location
+            temp_path.replace(self.db_path)
+            
+            # Set secure file permissions
+            os.chmod(self.db_path, 0o600)
+            
         except Exception as e:
             logger.error(f"Error saving database: {e}")
+            # Try to restore from backup if save failed
+            backup_path = self.db_path.with_suffix('.json.bak')
+            if backup_path.exists():
+                backup_path.replace(self.db_path)
+            raise
     
     def add_case(self, case_data: Dict) -> bool:
         """Add a new case"""
