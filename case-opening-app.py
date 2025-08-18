@@ -143,17 +143,17 @@ if page == "📝 Case Management":
     # Navigation shortcuts at the top
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-    if st.button("👤 Defendant Info", use_container_width=True):
-        st.session_state.scroll_to = "defendant"
-with col2:
-    if st.button("📋 Case Details", use_container_width=True):
-        st.session_state.scroll_to = "case"
-with col3:
-    if st.button("🏛️ Court Info", use_container_width=True):
-        st.session_state.scroll_to = "court"
-with col4:
-    if st.button("📄 Export/View", use_container_width=True):
-        st.session_state.scroll_to = "export"
+        if st.button("👤 Defendant Info", use_container_width=True):
+            st.session_state.scroll_to = "defendant"
+    with col2:
+        if st.button("📋 Case Details", use_container_width=True):
+            st.session_state.scroll_to = "case"
+    with col3:
+        if st.button("🏛️ Court Info", use_container_width=True):
+            st.session_state.scroll_to = "court"
+    with col4:
+        if st.button("📄 Export/View", use_container_width=True):
+            st.session_state.scroll_to = "export"
 
 st.divider()
 

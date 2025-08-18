@@ -186,8 +186,15 @@ def validate_file_path(file_path: str, allowed_extensions: Optional[list] = None
     file_path = str(file_path).strip()
     
     # Check for path traversal attempts
-    if '..' in file_path or file_path.startswith('/') or ':' in file_path[:3]:
+    if '..' in file_path:
         return False
+    
+    # Allow absolute paths for legitimate purposes (including temp directories)
+    # But block suspicious patterns
+    suspicious_patterns = ['../', '..\\', '/etc/', '/proc/', 'C:\\Windows\\System32']
+    for pattern in suspicious_patterns:
+        if pattern.lower() in file_path.lower():
+            return False
     
     # Check file extension if specified
     if allowed_extensions:

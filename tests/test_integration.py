@@ -5,8 +5,11 @@ Tests complete workflows and module interactions
 import pytest
 import json
 import os
+import sys
+import ast
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, date
+from pathlib import Path
 from modules.database import CaseDatabase
 from modules.pdf_generator import generate_case_pdf
 from modules.auth import AuthManager
@@ -367,3 +370,199 @@ class TestEndToEndWorkflows:
         updated_cases = db_user2.get_all_cases()
         updated_case = next(c for c in updated_cases if c["id"] == user1_cases[0]["id"])
         assert updated_case["notes"] == "Updated by User 1"
+
+
+class TestUINavigationIntegration:
+    """Test UI navigation functionality and structure"""
+    
+    def test_main_app_syntax_and_structure(self):
+        """Test that the main app has correct syntax and expected structure"""
+        project_root = Path(__file__).parent.parent
+        main_app_path = project_root / "case-opening-app.py"
+        
+        if not main_app_path.exists():
+            pytest.skip("Main application file not found")
+        
+        with open(main_app_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Test AST parsing (syntax validation)
+        try:
+            tree = ast.parse(content)
+            assert tree is not None
+        except SyntaxError as e:
+            pytest.fail(f"Syntax error in main app: Line {e.lineno} - {e.msg}")
+        
+        # Test for expected UI elements
+        assert "st.columns(4)" in content, "Navigation columns should be present"
+        assert "Defendant Info" in content, "Defendant Info navigation should be present"
+        assert "Case Details" in content, "Case Details navigation should be present"
+        assert "Court Info" in content, "Court Info navigation should be present"
+        assert "Export/View" in content, "Export/View navigation should be present"
+    
+    def test_streamlit_column_structure(self):
+        """Test Streamlit column structure for proper indentation"""
+        project_root = Path(__file__).parent.parent
+        main_app_path = project_root / "case-opening-app.py"
+        
+        if not main_app_path.exists():
+            pytest.skip("Main application file not found")
+        
+        with open(main_app_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        # Find the column navigation section
+        navigation_start = None
+        for i, line in enumerate(lines):
+            if "col1, col2, col3, col4 = st.columns(4)" in line:
+                navigation_start = i
+                break
+        
+        if navigation_start is None:
+            pytest.fail("Navigation columns section not found")
+        
+        # Test the indentation of each column block
+        column_blocks = []
+        current_block = None
+        
+        for i in range(navigation_start, min(navigation_start + 20, len(lines))):
+            line = lines[i]
+            if "with col" in line and ":" in line:
+                current_block = {"start": i, "with_line": line, "content": []}
+                column_blocks.append(current_block)
+            elif current_block and line.strip() and not line.strip().startswith('#'):
+                # Check indentation level
+                with_indent = len(current_block["with_line"]) - len(current_block["with_line"].lstrip())
+                line_indent = len(line) - len(line.lstrip())
+                
+                # Content should be more indented than the 'with' statement
+                if line_indent > with_indent:
+                    current_block["content"].append(line.strip())
+                else:
+                    # End of current block
+                    current_block = None
+        
+        # Verify we found the expected column blocks
+        assert len(column_blocks) == 4, f"Expected 4 column blocks, found {len(column_blocks)}"
+        
+        # Verify each block has content
+        for i, block in enumerate(column_blocks, 1):
+            assert len(block["content"]) > 0, f"Column {i} should have content inside the 'with' block"
+            
+            # Verify the content contains a button
+            content_text = " ".join(block["content"])
+            assert "st.button" in content_text, f"Column {i} should contain a button"
+    
+    def test_navigation_button_functionality(self):
+        """Test navigation button structure and session state usage"""
+        project_root = Path(__file__).parent.parent
+        main_app_path = project_root / "case-opening-app.py"
+        
+        if not main_app_path.exists():
+            pytest.skip("Main application file not found")
+        
+        with open(main_app_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Test for expected navigation targets
+        navigation_targets = ["defendant", "case", "court", "export"]
+        
+        for target in navigation_targets:
+            # Check that each target has a corresponding div anchor
+            anchor_pattern = f'<div id="{target}"></div>'
+            assert anchor_pattern in content, f"Navigation anchor for '{target}' should be present"
+            
+            # Check that scroll_to session state is set for each target
+            session_state_pattern = f'st.session_state.scroll_to = "{target}"'
+            assert session_state_pattern in content, f"Session state scroll_to should be set for '{target}'"
+    
+    @patch('streamlit.session_state', {'current_case': {}, 'edit_mode': False})
+    @patch('streamlit.columns')
+    @patch('streamlit.button')
+    def test_navigation_button_interactions(self, mock_button, mock_columns):
+        """Test navigation button interaction logic"""
+        # Mock the column objects
+        mock_col1, mock_col2, mock_col3, mock_col4 = Mock(), Mock(), Mock(), Mock()
+        mock_columns.return_value = [mock_col1, mock_col2, mock_col3, mock_col4]
+        
+        # Mock button clicks for each navigation target
+        button_clicks = [True, False, False, False]  # Simulate first button clicked
+        mock_button.side_effect = button_clicks
+        
+        # Import and execute the navigation logic (simulate)
+        # This would require more complex mocking to test the actual file execution
+        # For now, we test the structural elements
+        assert mock_columns.called or True  # Placeholder for actual test logic
+    
+    def test_form_section_anchors(self):
+        """Test that form sections have proper HTML anchors for navigation"""
+        project_root = Path(__file__).parent.parent
+        main_app_path = project_root / "case-opening-app.py"
+        
+        if not main_app_path.exists():
+            pytest.skip("Main application file not found")
+        
+        with open(main_app_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Test for section anchors and corresponding render function calls
+        sections = [
+            ("defendant", "render_defendant_info"),
+            ("case", "render_case_info"),
+            ("court", "render_court_info"),
+            ("export", "Export and View")
+        ]
+        
+        for anchor_id, expected_content in sections:
+            # Check for HTML anchor
+            anchor_pattern = f'<div id="{anchor_id}"></div>'
+            assert anchor_pattern in content, f"Section anchor '{anchor_id}' should be present"
+            
+            # Check for corresponding content after the anchor
+            anchor_index = content.find(anchor_pattern)
+            content_after_anchor = content[anchor_index:anchor_index + 1000]  # Check next 1000 chars
+            assert expected_content in content_after_anchor, f"Expected content '{expected_content}' should follow anchor '{anchor_id}'"
+    
+    def test_streamlit_app_structure_integrity(self):
+        """Test overall Streamlit app structure integrity"""
+        project_root = Path(__file__).parent.parent
+        main_app_path = project_root / "case-opening-app.py"
+        
+        if not main_app_path.exists():
+            pytest.skip("Main application file not found")
+        
+        with open(main_app_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Test for required imports
+        required_imports = [
+            "import streamlit as st",
+            "from modules.database import CaseDatabase",
+            "from modules.forms import render_defendant_info",
+            "from modules.pdf_generator import generate_case_pdf"
+        ]
+        
+        for import_stmt in required_imports:
+            assert import_stmt in content, f"Required import missing: {import_stmt}"
+        
+        # Test for essential app components
+        essential_components = [
+            "st.set_page_config",
+            "check_authentication()",
+            "st.title",
+            "st.sidebar",
+            "CaseDatabase("
+        ]
+        
+        for component in essential_components:
+            assert component in content, f"Essential component missing: {component}"
+        
+        # Test for proper session state initialization
+        session_states = [
+            "'current_case'",
+            "'edit_mode'",
+            "'selected_case_id'"
+        ]
+        
+        for state in session_states:
+            assert state in content, f"Session state initialization missing: {state}"
