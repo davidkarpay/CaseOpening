@@ -86,8 +86,20 @@ class AuthManager:
     def _send_email(self, to_email: str, subject: str, message: str) -> bool:
         """Send email using organization's Outlook/Office365 SMTP server"""
         try:
-            # Check for development/mock mode
-            if os.environ.get('EMAIL_MOCK_MODE', '').lower() == 'true':
+            # Check for development/mock mode - FORCE TRUE if no SMTP credentials
+            mock_mode = os.environ.get('EMAIL_MOCK_MODE', '').lower() == 'true'
+            
+            # Auto-enable mock mode if no SMTP credentials are available
+            if not mock_mode:
+                smtp_check = (
+                    st.session_state.get('smtp_unlocked', False) or 
+                    (os.environ.get('SMTP_USERNAME') and os.environ.get('SMTP_PASSWORD'))
+                )
+                if not smtp_check:
+                    print("Auto-enabling mock mode due to missing SMTP credentials")
+                    mock_mode = True
+            
+            if mock_mode:
                 # Mock mode for development - just log the email instead of sending
                 print(f"\n=== MOCK EMAIL ===")
                 print(f"To: {to_email}")
@@ -100,11 +112,13 @@ class AuthManager:
                 code_match = re.search(r'(?:PIN is|code is|Code):\s*(\d{6})', message)
                 if code_match:
                     code = code_match.group(1)
-                    st.success(f"📧 **Development Mode**: Email sent to {to_email}")
-                    st.info(f"🔑 **Your Code**: {code}")
-                    st.warning("⚠️ **Remember this code** - you'll need it on the next screen!")
+                    st.success(f"📧 **Mock Mode Active**: No real email sent")
+                    st.info(f"🔑 **Your Verification Code**: {code}")
+                    st.warning("⚠️ **Copy this code** - you'll need it on the verification screen!")
+                    # Also show in a more prominent way
+                    st.markdown(f"### Verification Code: `{code}`")
                 else:
-                    st.info(f"📧 **Development Mode**: Email sent to {to_email}")
+                    st.info(f"📧 **Mock Mode Active**: Email details below")
                     st.code(f"Subject: {subject}\n\n{message}")
                 return True
             
